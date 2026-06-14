@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# local databases
+**/dev.db
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# env & secrets
+.env*
+!.env.example
+!**/.env.example
+*.local
+*.pem
+*.key
+
+# logs & transient artifacts
+*.log
+skills-lock.json
+
+# node / build output
+node_modules/
+dist/
+coverage/
+
+# project planning / local agent assets
+docs/
+.agents/

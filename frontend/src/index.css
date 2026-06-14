@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* Editorial minimalist theme (warm monochrome + spot pastels) */
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* brand (medium sea green), the single accent */
+  --color-brand: #3cb371;
+  --color-brand-dark: #2e8b57;
+  --color-brand-soft: #e8f3ec;
+
+  /* surfaces & ink */
+  --color-canvas: #fbfbfa;
+  --color-surface: #ffffff;
+  --color-line: #eaeaea;
+  --color-line-strong: #e0e0dd;
+  --color-ink: #1a1a18;
+  --color-charcoal: #2f3437;
+  --color-muted: #787774;
+
+  /* semantic spend colors */
+  --color-expense: #9f2f2d;
+  --color-warn: #956400;
+
+  /* muted pastel accents (bg + ink pairs) */
+  --color-pastel-red: #fdebec;
+  --color-pastel-red-ink: #9f2f2d;
+  --color-pastel-green: #edf3ec;
+  --color-pastel-green-ink: #346538;
+  --color-pastel-blue: #e1f3fe;
+  --color-pastel-blue-ink: #1f6c9f;
+  --color-pastel-yellow: #fbf3db;
+  --color-pastel-yellow-ink: #956400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 12% -12%, rgb(60 179 113 / 0.06), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0%, var(--color-canvas) 22rem);
+  color: var(--color-charcoal);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgb(26 26 24 / 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(26 26 24 / 0.026) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* tabular figures for money / data */
+.nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* editorial display heading */
+.display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* quiet entry motion (mount fade-up; stagger via --i) */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-140%);
+  border-radius: 0.375rem;
+  background: var(--color-ink);
+  color: white;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .rise {
+    animation: none;
+  }
+}
