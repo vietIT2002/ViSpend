@@ -26,7 +26,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <IconSpendMark size={22} />
             </span>
             <div className="min-w-0 leading-tight">
-              <p className="display text-2xl text-ink">ViSpend</p>
+              <p className="display text-2xl text-ink">Vispend</p>
               {user?.email && <p className="nums truncate text-xs text-muted">{user.email}</p>}
             </div>
           </div>
