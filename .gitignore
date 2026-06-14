@@ -29,6 +29,8 @@ skills-lock.json
 node_modules/
 dist/
 coverage/
+.vercel/
+**/.vercel/
 
 # project planning / local agent assets
 docs/

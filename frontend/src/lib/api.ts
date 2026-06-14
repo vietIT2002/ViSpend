@@ -1,7 +1,9 @@
 // Defaults to "/api" so the Vite dev proxy (and a same-origin production
 // deploy) work with zero config. Override with VITE_API_URL when the API is
 // hosted on a different origin.
-const API_URL = import.meta.env.VITE_API_URL ?? "/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? "https://vispend-api.onrender.com/api" : "/api");
 
 export class ApiError extends Error {
   constructor(
