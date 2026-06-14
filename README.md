@@ -1,6 +1,6 @@
-# Vispend
+# ViSpend
 
-Vispend is a personal expense management web app for recording income and expenses, organizing transactions by category, and viewing clear cash-flow insights.
+ViSpend is a personal expense management web app for recording income and expenses, organizing transactions by category, and viewing clear cash-flow insights.
 
 The app is split into a FastAPI backend and a React/Vite frontend. The backend owns authentication, authorization, persistence, and aggregation logic. The frontend provides the responsive product interface.
 

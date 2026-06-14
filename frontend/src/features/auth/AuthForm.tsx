@@ -51,7 +51,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </span>
           <h1 className="display mt-8 max-w-xl text-5xl text-ink">Personal finance without the noise.</h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-muted">
-            Vispend helps you record daily cash flow, review category spend, and understand month-to-month changes.
+            ViSpend helps you record daily cash flow, review category spend, and understand month-to-month changes.
           </p>
         </div>
 
@@ -200,7 +200,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <p className="mt-5 text-center text-sm text-muted">
             {mode === "login" ? (
               <>
-                New to Vispend?{" "}
+                New to ViSpend?{" "}
                 <Link className="font-medium text-ink underline underline-offset-4" to="/register">
                   Create an account
                 </Link>

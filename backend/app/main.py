@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Vispend API", lifespan=lifespan)
+app = FastAPI(title="ViSpend API", lifespan=lifespan)
 
 # Rate limiting (anti-brute-force on auth endpoints).
 app.state.limiter = limiter
