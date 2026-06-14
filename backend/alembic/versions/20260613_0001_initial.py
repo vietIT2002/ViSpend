@@ -45,6 +45,20 @@ def upgrade() -> None:
     op.create_index("ix_category_user_id", "category", ["user_id"], unique=False)
 
     op.create_table(
+        "budget",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("category_id", sa.Uuid(), nullable=False),
+        sa.Column("amount", sa.Numeric(precision=15, scale=2), nullable=False),
+        sa.ForeignKeyConstraint(["category_id"], ["category.id"]),
+        sa.ForeignKeyConstraint(["user_id"], ["user.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id", "category_id", name="uq_budget_user_category"),
+    )
+    op.create_index("ix_budget_category_id", "budget", ["category_id"], unique=False)
+    op.create_index("ix_budget_user_id", "budget", ["user_id"], unique=False)
+
+    op.create_table(
         "transaction",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=False),
@@ -70,6 +84,9 @@ def downgrade() -> None:
     op.drop_index("ix_transaction_occurred_on", table_name="transaction")
     op.drop_index("ix_transaction_category_id", table_name="transaction")
     op.drop_table("transaction")
+    op.drop_index("ix_budget_user_id", table_name="budget")
+    op.drop_index("ix_budget_category_id", table_name="budget")
+    op.drop_table("budget")
     op.drop_index("ix_category_user_id", table_name="category")
     op.drop_table("category")
     op.drop_index("ix_user_email", table_name="user")
