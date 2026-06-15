@@ -6,8 +6,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  LabelList,
+  ComposedChart,
   Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -142,7 +143,8 @@ export function DashboardPage() {
   const topCategory = rows[0];
   const categoryChart = rows.slice(0, 8).map((r) => ({
     category: r.category,
-    total: Number(r.total),
+    current: Number(r.total),
+    previous: Number(r.prev_total),
     percent: r.percent,
     color: r.color ?? "#3cb371",
   }));
@@ -220,7 +222,7 @@ export function DashboardPage() {
                   <PieChart>
                     <Pie
                       data={categoryChart}
-                      dataKey="total"
+                      dataKey="current"
                       nameKey="category"
                       innerRadius={44}
                       outerRadius={78}
@@ -271,7 +273,7 @@ export function DashboardPage() {
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryChart} layout="vertical" margin={{ top: 8, right: 52, left: 12, bottom: 0 }}>
+                <BarChart data={categoryChart} layout="vertical" margin={{ top: 8, right: 24, left: 12, bottom: 0 }}>
                   <CartesianGrid stroke="#f0efec" horizontal={false} />
                   <XAxis type="number" tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={{ stroke: "#eaeaea" }} />
                   <YAxis
@@ -283,14 +285,9 @@ export function DashboardPage() {
                     axisLine={false}
                   />
                   <Tooltip formatter={(value) => vnd(String(value))} contentStyle={tooltipStyle} />
-                  <Bar dataKey="total" name="Spending" radius={[0, 6, 6, 0]} barSize={20}>
-                    <LabelList
-                      dataKey="total"
-                      position="right"
-                      formatter={(value) => shortVnd(typeof value === "number" || typeof value === "string" ? value : 0)}
-                      fill="#787774"
-                      fontSize={11}
-                    />
+                  <Legend iconType="rect" wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="previous" name="Previous" fill="#dcdbd6" radius={[0, 4, 4, 0]} barSize={9} />
+                  <Bar dataKey="current" name="Current" radius={[0, 4, 4, 0]} barSize={9}>
                     {categoryChart.map((entry) => (
                       <Cell key={entry.category} fill={entry.color} />
                     ))}
@@ -318,7 +315,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                <ComposedChart data={cashData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="#f0efec" vertical={false} />
                   <XAxis dataKey="period" tick={axisTick} tickLine={false} axisLine={{ stroke: "#eaeaea" }} />
                   <YAxis tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={false} width={42} />
@@ -326,8 +323,8 @@ export function DashboardPage() {
                   <Legend iconType="rect" wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="income" name="Income" fill="#3cb371" radius={[5, 5, 0, 0]} barSize={18} />
                   <Bar dataKey="expense" name="Expense" fill="#9f2f2d" radius={[5, 5, 0, 0]} barSize={18} />
-                  <Bar dataKey="net" name="Net" fill="#1a1a18" radius={[5, 5, 0, 0]} barSize={18} />
-                </BarChart>
+                  <Line dataKey="net" name="Net" stroke="#1a1a18" strokeWidth={2} dot={{ r: 2 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
