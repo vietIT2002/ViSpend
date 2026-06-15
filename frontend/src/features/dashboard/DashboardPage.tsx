@@ -216,7 +216,7 @@ export function DashboardPage() {
               <p className="mt-1 text-sm text-muted">The pie chart appears after you add expenses.</p>
             </div>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-[180px_1fr] lg:grid-cols-1 xl:grid-cols-[180px_1fr]">
+            <div className="mt-5 grid gap-4 sm:grid-cols-[160px_1fr]">
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
