@@ -6,9 +6,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -315,16 +315,16 @@ export function DashboardPage() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={cashData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                <LineChart data={cashData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="#f0efec" vertical={false} />
                   <XAxis dataKey="period" tick={axisTick} tickLine={false} axisLine={{ stroke: "#eaeaea" }} />
                   <YAxis tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={false} width={42} />
                   <Tooltip formatter={(value) => vnd(String(value))} contentStyle={tooltipStyle} />
-                  <Legend iconType="rect" wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="income" name="Income" fill="#3cb371" radius={[5, 5, 0, 0]} barSize={18} />
-                  <Bar dataKey="expense" name="Expense" fill="#9f2f2d" radius={[5, 5, 0, 0]} barSize={18} />
+                  <Legend iconType="line" wrapperStyle={{ fontSize: 12 }} />
+                  <Line dataKey="income" name="Income" stroke="#3cb371" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line dataKey="expense" name="Expense" stroke="#9f2f2d" strokeWidth={2} dot={{ r: 2 }} />
                   <Line dataKey="net" name="Net" stroke="#1a1a18" strokeWidth={2} dot={{ r: 2 }} />
-                </ComposedChart>
+                </LineChart>
               </ResponsiveContainer>
             )}
           </div>
