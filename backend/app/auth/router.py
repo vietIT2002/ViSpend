@@ -1,3 +1,4 @@
+import secrets
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -14,9 +15,11 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.auth.google import verify_google_credential
 from app.models import User
 from app.schemas import (
     ForgotPasswordRequest,
+    GoogleLoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenOut,
@@ -51,6 +54,48 @@ def login(
     user = session.exec(select(User).where(User.email == form.username)).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    return TokenOut(access_token=create_access_token(subject=str(user.id)))
+
+
+@router.post("/google", response_model=TokenOut)
+@limiter.limit("10/minute")
+def google_login(
+    request: Request,
+    body: GoogleLoginRequest,
+    session: Session = Depends(get_session),
+) -> TokenOut:
+    try:
+        idinfo = verify_google_credential(body.credential)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google token") from exc
+
+    google_sub = idinfo.get("sub")
+    email = idinfo.get("email")
+    email_verified = bool(idinfo.get("email_verified"))
+    if not google_sub or not email or not email_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Google email is not verified")
+
+    user = session.exec(select(User).where(User.google_sub == google_sub)).first()
+    if user is None:
+        user = session.exec(select(User).where(User.email == email)).first()
+        if user is None:
+            user = User(
+                email=email,
+                hashed_password=hash_password(secrets.token_urlsafe(32)),
+                google_sub=google_sub,
+                is_verified=True,
+            )
+        elif user.google_sub and user.google_sub != google_sub:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Email is linked to another Google account")
+        else:
+            user.google_sub = google_sub
+            user.is_verified = True
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     return TokenOut(access_token=create_access_token(subject=str(user.id)))
 
 

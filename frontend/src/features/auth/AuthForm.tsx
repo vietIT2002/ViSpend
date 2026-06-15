@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -234,23 +235,15 @@ function BottomBenefit({
   );
 }
 
-function SocialMark({ provider }: { provider: "google" | "apple" }) {
-  if (provider === "google") {
-    return (
-      <span className="inline-grid size-5 place-items-center font-sans text-lg font-bold leading-none">
-        <span className="bg-[linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)] bg-clip-text text-transparent">
-          G
-        </span>
-      </span>
-    );
-  }
+function SocialMark() {
   return <span className="inline-grid size-5 place-items-center text-base font-semibold text-black">A</span>;
 }
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const {
     register: field,
@@ -277,6 +270,26 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   function socialUnavailable(provider: "Google" | "Apple") {
     setError(`${provider} sign-in is not configured yet. Please use email and password.`);
   }
+
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setError(null);
+      setGoogleBusy(true);
+      try {
+        await loginWithGoogle(credential);
+        navigate("/");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not sign in with Google.");
+      } finally {
+        setGoogleBusy(false);
+      }
+    },
+    [loginWithGoogle, navigate],
+  );
+
+  const handleGoogleError = useCallback((message: string) => {
+    setError(message);
+  }, []);
 
   return (
     <main className="min-h-[100dvh] bg-[#f7f9f7] p-2 text-charcoal">
@@ -409,20 +422,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               </div>
 
               <div className="mt-5 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => socialUnavailable("Google")}
-                  className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-line bg-white text-base font-medium text-charcoal transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-[0.99]"
-                >
-                  <SocialMark provider="google" />
-                  Continue with Google
-                </button>
+                <GoogleSignInButton
+                  disabled={googleBusy || isSubmitting}
+                  onCredential={handleGoogleCredential}
+                  onError={handleGoogleError}
+                />
                 <button
                   type="button"
                   onClick={() => socialUnavailable("Apple")}
                   className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-line bg-white text-base font-medium text-charcoal transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-[0.99]"
                 >
-                  <SocialMark provider="apple" />
+                  <SocialMark />
                   Continue with Apple
                 </button>
               </div>

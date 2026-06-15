@@ -30,6 +30,7 @@ class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
     email: str = Field(index=True, unique=True)
     hashed_password: str
+    google_sub: str | None = Field(default=None, index=True, unique=True)
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=_now)

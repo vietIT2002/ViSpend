@@ -1,3 +1,10 @@
+from sqlmodel import select
+
+from app.auth import router as auth_router
+from app.core.config import settings
+from app.models import User
+
+
 def test_register_then_login(client):
     r = client.post(
         "/api/auth/register",
@@ -47,3 +54,107 @@ def test_me_returns_current_user(auth_client):
     r = auth_client.get("/api/auth/me")
     assert r.status_code == 200
     assert r.json()["email"] == "a@test.com"
+
+
+def test_google_login_creates_verified_user_and_returns_token(client, session, monkeypatch):
+    monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
+
+    def fake_verify_google_credential(credential: str) -> dict:
+        assert credential == "valid-google-token"
+        return {
+            "sub": "google-sub-1",
+            "email": "g.user@test.com",
+            "email_verified": True,
+        }
+
+    monkeypatch.setattr(
+        auth_router,
+        "verify_google_credential",
+        fake_verify_google_credential,
+        raising=False,
+    )
+
+    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    assert r.json()["token_type"] == "bearer"
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "g.user@test.com"
+
+    user = session.exec(select(User).where(User.email == "g.user@test.com")).one()
+    assert user.google_sub == "google-sub-1"
+    assert user.is_verified is True
+
+
+def test_google_login_links_existing_email_account(client, session, monkeypatch):
+    monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
+    client.post(
+        "/api/auth/register",
+        json={"email": "existing@test.com", "password": "password123"},
+    )
+    existing = session.exec(select(User).where(User.email == "existing@test.com")).one()
+
+    def fake_verify_google_credential(_: str) -> dict:
+        return {
+            "sub": "google-sub-existing",
+            "email": "existing@test.com",
+            "email_verified": True,
+        }
+
+    monkeypatch.setattr(
+        auth_router,
+        "verify_google_credential",
+        fake_verify_google_credential,
+        raising=False,
+    )
+
+    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+
+    assert r.status_code == 200
+    session.refresh(existing)
+    assert existing.google_sub == "google-sub-existing"
+    assert existing.is_verified is True
+    assert session.exec(select(User).where(User.email == "existing@test.com")).all() == [existing]
+
+
+def test_google_login_rejects_unverified_google_email(client, monkeypatch):
+    monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
+
+    def fake_verify_google_credential(_: str) -> dict:
+        return {
+            "sub": "google-sub-unverified",
+            "email": "unverified@test.com",
+            "email_verified": False,
+        }
+
+    monkeypatch.setattr(
+        auth_router,
+        "verify_google_credential",
+        fake_verify_google_credential,
+        raising=False,
+    )
+
+    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+
+    assert r.status_code == 401
+
+
+def test_google_login_rejects_invalid_google_token(client, monkeypatch):
+    monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
+
+    def fake_verify_google_credential(_: str) -> dict:
+        raise ValueError("Invalid Google ID token")
+
+    monkeypatch.setattr(
+        auth_router,
+        "verify_google_credential",
+        fake_verify_google_credential,
+        raising=False,
+    )
+
+    r = client.post("/api/auth/google", json={"credential": "bad-google-token"})
+
+    assert r.status_code == 401
