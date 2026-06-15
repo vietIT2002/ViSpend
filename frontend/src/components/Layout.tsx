@@ -22,7 +22,7 @@ export function Layout({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
-        <div className="mx-auto flex min-h-[76px] max-w-6xl items-center gap-4 px-4 py-3 lg:px-6">
+        <div className="mx-auto flex min-h-[76px] max-w-[1480px] items-center gap-4 px-4 py-3 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-brand text-white">
               <IconSpendMark size={22} />
@@ -65,7 +65,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      <main id="main-content" className="mx-auto max-w-6xl px-4 py-7 sm:py-10 lg:px-6">
+      <main id="main-content" className="mx-auto max-w-[1480px] px-4 py-7 sm:py-10 lg:px-6">
         {children}
       </main>
 

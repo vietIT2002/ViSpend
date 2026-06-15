@@ -9,6 +9,8 @@ export interface TxnFilter {
   method?: PayMethod;
   from?: string;
   to?: string;
+  page?: number;
+  page_size?: number;
 }
 
 export function useTransactions(filter: TxnFilter) {

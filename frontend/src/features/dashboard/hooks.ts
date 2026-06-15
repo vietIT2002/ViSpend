@@ -4,6 +4,7 @@ import { api, buildQuery } from "../../lib/api";
 import type { CategorySpend, DashboardSummary, TrendPoint } from "../../types";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+type TrendGranularity = "day" | "week" | "month";
 
 export function useSummary(from?: string, to?: string) {
   return useQuery({
@@ -21,15 +22,19 @@ export function useCategorySpend(from?: string, to?: string) {
   });
 }
 
+export function useTrend(granularity: TrendGranularity, from?: string, to?: string) {
+  return useQuery({
+    queryKey: ["dashboard", "trend", granularity, from, to],
+    queryFn: () => api.get<TrendPoint[]>(buildQuery("/dashboard/trend", { granularity, from, to })),
+    enabled: Boolean(from && to),
+  });
+}
+
 export function useCashflow(months = 6) {
   const now = new Date();
   const from = iso(new Date(now.getFullYear(), now.getMonth() - (months - 1), 1));
   const to = iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  return useQuery({
-    queryKey: ["dashboard", "trend", from, to],
-    queryFn: () =>
-      api.get<TrendPoint[]>(buildQuery("/dashboard/trend", { granularity: "month", from, to })),
-  });
+  return useTrend("month", from, to);
 }
 
 /** Equal-length period immediately before [from, to], for change comparisons. */
