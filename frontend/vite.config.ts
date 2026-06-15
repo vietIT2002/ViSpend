@@ -6,6 +6,11 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   build: {
+    modulePreload: {
+      resolveDependencies(_, deps) {
+        return deps.filter((dep) => !dep.includes("charts-"));
+      },
+    },
     rollupOptions: {
       output: {
         // Split stable libraries into their own long-cacheable chunks so an
