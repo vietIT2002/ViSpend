@@ -207,11 +207,210 @@ export function IconGift(p: IconProps) {
     </Svg>
   );
 }
+export function IconCoffee(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" />
+      <path d="M16 9h2.5a1.5 1.5 0 0 1 0 3H16" />
+      <path d="M8 3v2M11 3v2" />
+    </Svg>
+  );
+}
+export function IconBus(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="4" y="4" width="16" height="13" rx="2" />
+      <path d="M4 11h16M7 17v2M17 17v2" />
+    </Svg>
+  );
+}
+export function IconPlane(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M11 4.5a1 1 0 0 1 2 0V10l7 4v1.5l-7-2v3.5l2 1.5V20l-3-1-3 1v-1.5l2-1.5V13l-7 2v-1.5l7-4z" />
+    </Svg>
+  );
+}
+export function IconBed(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M3 7v12M3 18h18v-4a3 3 0 0 0-3-3H9v3" />
+      <circle cx="6.5" cy="11.5" r="1.4" />
+    </Svg>
+  );
+}
+export function IconPhone(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="7" y="3" width="10" height="18" rx="2.5" />
+      <path d="M11 18h2" />
+    </Svg>
+  );
+}
+export function IconWifi(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M5 9a11 11 0 0 1 14 0" />
+      <path d="M7.5 12a7 7 0 0 1 9 0" />
+      <path d="M10 15a3 3 0 0 1 4 0" />
+      <circle cx="12" cy="18" r="0.5" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+export function IconBolt(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M13 3 5 13h6l-1 8 8-10h-6z" />
+    </Svg>
+  );
+}
+export function IconDroplet(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z" />
+    </Svg>
+  );
+}
+export function IconKey(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="8" cy="8" r="4" />
+      <path d="m11 11 8 8M16 16l2-2" />
+    </Svg>
+  );
+}
+export function IconBook(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z" />
+      <path d="M5 18a2 2 0 0 1 2-2h11" />
+    </Svg>
+  );
+}
+export function IconPaw(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="7" cy="9" r="1.5" />
+      <circle cx="12" cy="7" r="1.5" />
+      <circle cx="17" cy="9" r="1.5" />
+      <path d="M9 15.5a3 3 0 0 1 6 0c0 1.7-1.3 2.8-3 2.8s-3-1.1-3-2.8z" />
+    </Svg>
+  );
+}
+export function IconShirt(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M9 4 4 7l2 3 2-1.2V20h8V8.8L18 10l2-3-5-3-3 2.2z" />
+    </Svg>
+  );
+}
+export function IconSparkles(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M11 4l1.6 4.4L17 10l-4.4 1.6L11 16l-1.6-4.4L5 10l4.4-1.6z" />
+      <path d="M18 14l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z" />
+    </Svg>
+  );
+}
+export function IconDumbbell(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10" />
+    </Svg>
+  );
+}
+export function IconPill(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M6 13.5 13.5 6a4 4 0 0 1 5.6 5.6L11.6 19.1A4 4 0 0 1 6 13.5z" />
+      <path d="m9 9 6 6" />
+    </Svg>
+  );
+}
+export function IconWrench(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M15.5 4a4 4 0 0 0-5 5l-6.5 6.5 3 3L13.5 12a4 4 0 0 0 5-5l-2.5 2.5L13.5 9 13 6.5z" />
+    </Svg>
+  );
+}
+export function IconRepeat(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 9a5 5 0 0 1 5-5h7M4 9l3-3M4 9l3 3" />
+      <path d="M20 15a5 5 0 0 1-5 5H8M20 15l-3 3M20 15l-3-3" />
+    </Svg>
+  );
+}
+export function IconGamepad(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="3" y="8" width="18" height="9" rx="3" />
+      <path d="M7 11v3M5.5 12.5h3" />
+      <circle cx="16" cy="12" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="14" r="0.6" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+export function IconCash(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 9h.01M18 15h.01" />
+    </Svg>
+  );
+}
+export function IconChart(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 19V5M4 19h16" />
+      <path d="m7 14 3-4 3 2 5-6" />
+      <path d="M20 6v3.5h-3.5" />
+    </Svg>
+  );
+}
+export function IconPiggy(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 12a6 5 0 0 1 6-5h3a6 5 0 0 1 6 5 6 5 0 0 1-2 3.6V18h-2.4l-.5-1.5h-2.6L14 18H8v-2.4A6 5 0 0 1 4 12z" />
+      <path d="M3 11h1.6" />
+      <circle cx="9" cy="11" r="0.5" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+export function IconCoins(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <ellipse cx="9" cy="7" rx="5" ry="2.5" />
+      <path d="M4 7v4c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5V7" />
+      <path d="M10 14c.4 1.2 2.4 2 5 2 2.8 0 5-1.1 5-2.5v-4c0-1.4-2.2-2.5-5-2.5" />
+    </Svg>
+  );
+}
+export function IconUsers(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 6a3 3 0 0 1 0 6M17 14.5a5.5 5.5 0 0 1 3.5 4.5" />
+    </Svg>
+  );
+}
+export function IconCircle(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="8" />
+    </Svg>
+  );
+}
 
 export const CATEGORY_ICONS: Record<string, (p: IconProps) => ReactElement> = {
+  // Core
   tag: IconTag,
   food: IconFood,
   car: IconCar,
+  bus: IconBus,
   cart: IconCart,
   bill: IconBill,
   heart: IconHeart,
@@ -220,6 +419,36 @@ export const CATEGORY_ICONS: Record<string, (p: IconProps) => ReactElement> = {
   gift: IconGift,
   wallet: IconWallet,
   spend: IconSpendMark,
+  // Expenses
+  coffee: IconCoffee,
+  plane: IconPlane,
+  bed: IconBed,
+  phone: IconPhone,
+  wifi: IconWifi,
+  bolt: IconBolt,
+  droplet: IconDroplet,
+  key: IconKey,
+  book: IconBook,
+  paw: IconPaw,
+  shirt: IconShirt,
+  sparkles: IconSparkles,
+  dumbbell: IconDumbbell,
+  pill: IconPill,
+  wrench: IconWrench,
+  repeat: IconRepeat,
+  gamepad: IconGamepad,
+  users: IconUsers,
+  circle: IconCircle,
+  // Income
+  cash: IconCash,
+  chart: IconChart,
+  piggy: IconPiggy,
+  coins: IconCoins,
+  // Aliases for backend seed icon names
+  utensils: IconFood,
+  "shopping-bag": IconCart,
+  receipt: IconBill,
+  "heart-pulse": IconHeart,
 };
 
 export function CategoryIcon({ name, size = 16 }: { name: string | null; size?: number }) {

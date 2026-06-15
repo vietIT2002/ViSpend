@@ -17,7 +17,13 @@ import {
   useUpdateCategory,
 } from "./hooks";
 
-const ICON_KEYS = ["tag", "food", "car", "cart", "bill", "heart", "film", "home", "gift"];
+const ICON_KEYS = [
+  "tag", "food", "coffee", "cart", "bus", "car", "plane", "bed",
+  "bill", "phone", "wifi", "bolt", "droplet", "home", "key", "book",
+  "heart", "pill", "dumbbell", "paw", "shirt", "sparkles", "film", "gamepad",
+  "wrench", "repeat", "gift", "users", "circle",
+  "wallet", "cash", "coins", "chart", "piggy",
+];
 
 export function CategoriesPage() {
   const { data: cats = [] } = useCategories();
@@ -74,26 +80,28 @@ export function CategoriesPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Icon</span>
-            {ICON_KEYS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                aria-label={`Icon ${k}`}
-                onClick={() => setIcon(k)}
-                className={cn(
-                  "grid size-9 place-items-center rounded-md border transition-colors",
-                  icon === k ? "border-brand bg-brand-soft text-brand-dark" : "border-line text-muted hover:text-ink",
-                )}
-              >
-                {CATEGORY_ICONS[k]({ size: 16 })}
-              </button>
-            ))}
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+          <div>
+            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Icon</span>
+            <div className="grid max-h-28 grid-cols-8 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-10 lg:grid-cols-12">
+              {ICON_KEYS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-label={`Icon ${k}`}
+                  onClick={() => setIcon(k)}
+                  className={cn(
+                    "grid size-9 place-items-center rounded-md border transition-colors",
+                    icon === k ? "border-brand bg-brand-soft text-brand-dark" : "border-line text-muted hover:text-ink",
+                  )}
+                >
+                  {CATEGORY_ICONS[k]?.({ size: 16 })}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Color</span>
+          <div>
+            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Color</span>
             <ColorSwatchPicker value={color} onChange={setColor} />
           </div>
         </div>
