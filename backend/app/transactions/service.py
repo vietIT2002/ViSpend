@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
@@ -8,12 +8,26 @@ from app.categories.service import get_accessible_category
 from app.models import PayMethod, Transaction, TxnType, User
 from app.schemas import TransactionCreate, TransactionUpdate
 
+# Transactions become read-only this long after they are recorded.
+EDIT_WINDOW = timedelta(hours=24)
+
 
 def get_owned_transaction(session: Session, user: User, txn_id: uuid.UUID) -> Transaction:
     txn = session.get(Transaction, txn_id)
     if txn is None or txn.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaction not found")
     return txn
+
+
+def _ensure_within_edit_window(txn: Transaction) -> None:
+    created = txn.created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) - created > EDIT_WINDOW:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Transactions can no longer be changed 24 hours after they are recorded",
+        )
 
 
 def list_transactions(
@@ -60,6 +74,7 @@ def update_transaction(
     body: TransactionUpdate,
 ) -> Transaction:
     txn = get_owned_transaction(session, user, txn_id)
+    _ensure_within_edit_window(txn)
     updates = body.model_dump(exclude_unset=True)
     next_category_id = updates.get("category_id", txn.category_id)
     get_accessible_category(session, user, next_category_id, txn.type)
@@ -74,5 +89,6 @@ def update_transaction(
 
 def delete_transaction(session: Session, user: User, txn_id: uuid.UUID) -> None:
     txn = get_owned_transaction(session, user, txn_id)
+    _ensure_within_edit_window(txn)
     session.delete(txn)
     session.commit()

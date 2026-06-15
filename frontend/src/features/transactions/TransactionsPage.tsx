@@ -1,10 +1,11 @@
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { IconFlow, IconPencil, IconPlus, IconTrash } from "../../components/icons";
@@ -14,10 +15,22 @@ import { useCategories } from "../categories/hooks";
 import { TransactionModal } from "./TransactionModal";
 import { useDeleteTransaction, useTransactions, type TxnFilter } from "./hooks";
 
+// Transactions can only be edited/deleted within 24h of being recorded.
+const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+function isLocked(t: Transaction) {
+  return Date.now() - new Date(t.created_at).getTime() > EDIT_WINDOW_MS;
+}
+const LOCKED_HINT = "Locked: cannot be changed 24h after it was recorded";
+
+const amountClass = (type: TxnType) =>
+  type === "income" ? "text-brand-dark" : "text-expense";
+const amountText = (t: Transaction) => `${t.type === "income" ? "+" : "-"}${vnd(t.amount)}`;
+
 export function TransactionsPage() {
   const [filter, setFilter] = useState<TxnFilter>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [viewing, setViewing] = useState<Transaction | null>(null);
   const [newType, setNewType] = useState<TxnType>("expense");
 
   const { data, isLoading } = useTransactions(filter);
@@ -117,6 +130,8 @@ export function TransactionsPage() {
                   key={t.id}
                   transaction={t}
                   category={catName(t.category_id)}
+                  locked={isLocked(t)}
+                  onView={() => setViewing(t)}
                   onEdit={() => openEdit(t)}
                   onDelete={() => del.mutate(t.id)}
                 />
@@ -138,48 +153,58 @@ export function TransactionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {items.map((t) => (
-                    <tr key={t.id} className="transition-colors hover:bg-black/[0.015]">
-                      <td className="nums px-5 py-3.5 text-charcoal">
-                        {format(new Date(t.occurred_on), "dd MMM yyyy")}
-                      </td>
-                      <td className="px-5 py-3.5 font-medium text-ink">{catName(t.category_id)}</td>
-                      <td className="px-5 py-3.5">
-                        <Badge tone={t.type === "income" ? "green" : "red"}>{t.type}</Badge>
-                      </td>
-                      <td className="px-5 py-3.5 capitalize text-charcoal">{t.method}</td>
-                      <td
-                        className={`nums px-5 py-3.5 text-right font-medium ${
-                          t.type === "income" ? "text-brand-dark" : "text-ink"
-                        }`}
+                  {items.map((t) => {
+                    const locked = isLocked(t);
+                    return (
+                      <tr
+                        key={t.id}
+                        className="cursor-pointer transition-colors hover:bg-black/[0.015]"
+                        onClick={() => setViewing(t)}
                       >
-                        {t.type === "income" ? "+" : "-"}
-                        {vnd(t.amount)}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            onClick={() => openEdit(t)}
-                            title="Edit"
-                            aria-label="Edit transaction"
-                            className="size-9 px-0"
-                          >
-                            <IconPencil size={16} />
-                          </Button>
-                          <Button
-                            variant="danger"
-                            onClick={() => del.mutate(t.id)}
-                            title="Delete"
-                            aria-label="Delete transaction"
-                            className="size-9 px-0"
-                          >
-                            <IconTrash size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="nums px-5 py-3.5 text-charcoal">
+                          {format(new Date(t.occurred_on), "dd MMM yyyy")}
+                        </td>
+                        <td className="px-5 py-3.5 font-medium text-ink">{catName(t.category_id)}</td>
+                        <td className="px-5 py-3.5">
+                          <Badge tone={t.type === "income" ? "green" : "red"}>{t.type}</Badge>
+                        </td>
+                        <td className="px-5 py-3.5 capitalize text-charcoal">{t.method}</td>
+                        <td className={`nums px-5 py-3.5 text-right font-medium ${amountClass(t.type)}`}>
+                          {amountText(t)}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              disabled={locked}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(t);
+                              }}
+                              title={locked ? LOCKED_HINT : "Edit"}
+                              aria-label="Edit transaction"
+                              className="size-9 px-0"
+                            >
+                              <IconPencil size={16} />
+                            </Button>
+                            <Button
+                              variant="danger"
+                              disabled={locked}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                del.mutate(t.id);
+                              }}
+                              title={locked ? LOCKED_HINT : "Delete"}
+                              aria-label="Delete transaction"
+                              className="size-9 px-0"
+                            >
+                              <IconTrash size={16} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -193,6 +218,53 @@ export function TransactionsPage() {
         editing={editing}
         defaultType={newType}
       />
+
+      <Modal open={Boolean(viewing)} onClose={() => setViewing(null)} title="Transaction details">
+        {viewing && (
+          <div className="space-y-1">
+            <DetailRow label="Date" value={format(new Date(viewing.occurred_on), "dd MMM yyyy")} />
+            <DetailRow label="Category" value={catName(viewing.category_id)} />
+            <DetailRow
+              label="Type"
+              value={<Badge tone={viewing.type === "income" ? "green" : "red"}>{viewing.type}</Badge>}
+            />
+            <DetailRow label="Method" value={<span className="capitalize">{viewing.method}</span>} />
+            <DetailRow
+              label="Amount"
+              value={<span className={`nums font-medium ${amountClass(viewing.type)}`}>{amountText(viewing)}</span>}
+            />
+            <DetailRow label="Note" value={viewing.note?.trim() ? viewing.note : "—"} />
+            <DetailRow
+              label="Recorded"
+              value={<span className="nums">{format(new Date(viewing.created_at), "dd MMM yyyy, HH:mm")}</span>}
+            />
+            <div className="flex justify-end gap-2 pt-4">
+              {!isLocked(viewing) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const t = viewing;
+                    setViewing(null);
+                    openEdit(t);
+                  }}
+                >
+                  <IconPencil size={16} /> Edit
+                </Button>
+              )}
+              <Button onClick={() => setViewing(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-line py-2.5 last:border-0">
+      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{label}</span>
+      <span className="min-w-0 break-words text-right text-sm text-ink">{value}</span>
     </div>
   );
 }
@@ -216,25 +288,26 @@ function TransactionSkeleton() {
 function TransactionMobileCard({
   transaction: t,
   category,
+  locked,
+  onView,
   onEdit,
   onDelete,
 }: {
   transaction: Transaction;
   category: string;
+  locked: boolean;
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
-    <article className="p-4">
+    <article className="cursor-pointer p-4" onClick={onView}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">{category}</p>
           <p className="nums mt-1 text-xs text-muted">{format(new Date(t.occurred_on), "dd MMM yyyy")}</p>
         </div>
-        <p className={`nums shrink-0 text-sm font-medium ${t.type === "income" ? "text-brand-dark" : "text-ink"}`}>
-          {t.type === "income" ? "+" : "-"}
-          {vnd(t.amount)}
-        </p>
+        <p className={`nums shrink-0 text-sm font-medium ${amountClass(t.type)}`}>{amountText(t)}</p>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -242,10 +315,30 @@ function TransactionMobileCard({
           <span className="text-xs capitalize text-muted">{t.method}</span>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" onClick={onEdit} className="size-9 px-0" aria-label="Edit transaction">
+          <Button
+            variant="ghost"
+            disabled={locked}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            title={locked ? LOCKED_HINT : "Edit"}
+            className="size-9 px-0"
+            aria-label="Edit transaction"
+          >
             <IconPencil size={16} />
           </Button>
-          <Button variant="danger" onClick={onDelete} className="size-9 px-0" aria-label="Delete transaction">
+          <Button
+            variant="danger"
+            disabled={locked}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            title={locked ? LOCKED_HINT : "Delete"}
+            className="size-9 px-0"
+            aria-label="Delete transaction"
+          >
             <IconTrash size={16} />
           </Button>
         </div>

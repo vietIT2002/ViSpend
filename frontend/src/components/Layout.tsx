@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
 import { useAuth } from "../lib/auth";
 import { Button } from "./ui/button";
+import { Modal } from "./ui/modal";
 import { IconDashboard, IconFlow, IconLogout, IconSpendMark, IconTag } from "./icons";
 
 const links = [
@@ -13,6 +14,7 @@ const links = [
 
 export function Layout({ children }: { children: ReactNode }) {
   const { logout, user } = useAuth();
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   return (
     <div className="min-h-[100dvh] bg-canvas text-charcoal">
@@ -51,7 +53,13 @@ export function Layout({ children }: { children: ReactNode }) {
               </NavLink>
             ))}
             <span className="mx-2 hidden h-7 w-px shrink-0 bg-line sm:block" />
-            <Button variant="ghost" onClick={logout} title="Sign out" aria-label="Sign out" className="h-12 px-4">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmLogout(true)}
+              title="Sign out"
+              aria-label="Sign out"
+              className="h-12 px-4"
+            >
               <IconLogout size={20} />
             </Button>
           </nav>
@@ -60,6 +68,24 @@ export function Layout({ children }: { children: ReactNode }) {
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-7 sm:py-10 lg:px-6">
         {children}
       </main>
+
+      <Modal open={confirmLogout} onClose={() => setConfirmLogout(false)} title="Log out">
+        <p className="text-sm text-muted">Are you sure you want to log out?</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmLogout(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setConfirmLogout(false);
+              logout();
+            }}
+          >
+            Log out
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
