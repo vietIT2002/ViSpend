@@ -80,10 +80,10 @@ export function CategoriesPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+        <div className="space-y-4">
           <div>
             <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Icon</span>
-            <div className="grid max-h-28 grid-cols-8 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-10 lg:grid-cols-12">
+            <div className="flex flex-wrap gap-1.5">
               {ICON_KEYS.map((k) => (
                 <button
                   key={k}
