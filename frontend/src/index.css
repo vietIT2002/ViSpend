@@ -76,6 +76,16 @@ textarea {
   font: inherit;
 }
 
+/* Hand cursor on interactive controls (Tailwind v4 no longer sets this). */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* tabular figures for money / data */
 .nums {
   font-family: var(--font-mono);
