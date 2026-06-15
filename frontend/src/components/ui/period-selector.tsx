@@ -51,8 +51,10 @@ export function PeriodSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, customFrom, customTo]);
 
+  const showCustom = key === "custom";
+
   return (
-    <div className="w-full max-w-full space-y-2 sm:w-auto">
+    <div className="w-full max-w-full sm:w-auto">
       <div className="sm:hidden">
         <Select value={key} onChange={(e) => setKey(e.target.value as PeriodKey)} aria-label="Period">
           {PRESETS.map((p) => (
@@ -79,25 +81,35 @@ export function PeriodSelector({
         ))}
       </div>
 
-      {key === "custom" && (
-        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 lg:max-w-xl">
-          <Input
-            type="date"
-            className="nums h-9"
-            aria-label="From"
-            value={customFrom}
-            onChange={(e) => setCustomFrom(e.target.value)}
-          />
-          <span className="text-sm text-muted">to</span>
-          <Input
-            type="date"
-            className="nums h-9"
-            aria-label="To"
-            value={customTo}
-            onChange={(e) => setCustomTo(e.target.value)}
-          />
+      {/* Smoothly expand/collapse the custom range instead of popping in. */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out motion-reduce:transition-none",
+          showCustom ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 pt-2 lg:max-w-xl">
+            <Input
+              type="date"
+              className="nums h-9"
+              aria-label="From"
+              tabIndex={showCustom ? 0 : -1}
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+            <span className="text-sm text-muted">to</span>
+            <Input
+              type="date"
+              className="nums h-9"
+              aria-label="To"
+              tabIndex={showCustom ? 0 : -1}
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
