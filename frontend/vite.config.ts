@@ -5,6 +5,28 @@ import { defineConfig } from "vite";
 // same-origin (no CORS surprises, no hard-coded localhost port in the client).
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Split stable libraries into their own long-cacheable chunks so an
+        // app-code change does not bust the vendor cache.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("@tanstack")) return "query";
+          if (
+            id.includes("react-router") ||
+            id.includes("react-dom") ||
+            id.includes("/react/") ||
+            id.includes("scheduler")
+          ) {
+            return "react";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       "/api": {
