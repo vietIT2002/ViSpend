@@ -59,8 +59,8 @@ def test_me_returns_current_user(auth_client):
 def test_google_login_creates_verified_user_and_returns_token(client, session, monkeypatch):
     monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
 
-    def fake_verify_google_credential(credential: str) -> dict:
-        assert credential == "valid-google-token"
+    def fake_verify_google_access_token(token: str) -> dict:
+        assert token == "valid-google-token"
         return {
             "sub": "google-sub-1",
             "email": "g.user@test.com",
@@ -69,12 +69,12 @@ def test_google_login_creates_verified_user_and_returns_token(client, session, m
 
     monkeypatch.setattr(
         auth_router,
-        "verify_google_credential",
-        fake_verify_google_credential,
+        "verify_google_access_token",
+        fake_verify_google_access_token,
         raising=False,
     )
 
-    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+    r = client.post("/api/auth/google", json={"access_token": "valid-google-token"})
 
     assert r.status_code == 200
     token = r.json()["access_token"]
@@ -97,7 +97,7 @@ def test_google_login_links_existing_email_account(client, session, monkeypatch)
     )
     existing = session.exec(select(User).where(User.email == "existing@test.com")).one()
 
-    def fake_verify_google_credential(_: str) -> dict:
+    def fake_verify_google_access_token(_: str) -> dict:
         return {
             "sub": "google-sub-existing",
             "email": "existing@test.com",
@@ -106,12 +106,12 @@ def test_google_login_links_existing_email_account(client, session, monkeypatch)
 
     monkeypatch.setattr(
         auth_router,
-        "verify_google_credential",
-        fake_verify_google_credential,
+        "verify_google_access_token",
+        fake_verify_google_access_token,
         raising=False,
     )
 
-    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+    r = client.post("/api/auth/google", json={"access_token": "valid-google-token"})
 
     assert r.status_code == 200
     session.refresh(existing)
@@ -123,7 +123,7 @@ def test_google_login_links_existing_email_account(client, session, monkeypatch)
 def test_google_login_rejects_unverified_google_email(client, monkeypatch):
     monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
 
-    def fake_verify_google_credential(_: str) -> dict:
+    def fake_verify_google_access_token(_: str) -> dict:
         return {
             "sub": "google-sub-unverified",
             "email": "unverified@test.com",
@@ -132,12 +132,12 @@ def test_google_login_rejects_unverified_google_email(client, monkeypatch):
 
     monkeypatch.setattr(
         auth_router,
-        "verify_google_credential",
-        fake_verify_google_credential,
+        "verify_google_access_token",
+        fake_verify_google_access_token,
         raising=False,
     )
 
-    r = client.post("/api/auth/google", json={"credential": "valid-google-token"})
+    r = client.post("/api/auth/google", json={"access_token": "valid-google-token"})
 
     assert r.status_code == 401
 
@@ -145,16 +145,16 @@ def test_google_login_rejects_unverified_google_email(client, monkeypatch):
 def test_google_login_rejects_invalid_google_token(client, monkeypatch):
     monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
 
-    def fake_verify_google_credential(_: str) -> dict:
-        raise ValueError("Invalid Google ID token")
+    def fake_verify_google_access_token(_: str) -> dict:
+        raise ValueError("Invalid Google access token")
 
     monkeypatch.setattr(
         auth_router,
-        "verify_google_credential",
-        fake_verify_google_credential,
+        "verify_google_access_token",
+        fake_verify_google_access_token,
         raising=False,
     )
 
-    r = client.post("/api/auth/google", json={"credential": "bad-google-token"})
+    r = client.post("/api/auth/google", json={"access_token": "bad-google-token"})
 
     assert r.status_code == 401

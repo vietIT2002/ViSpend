@@ -15,7 +15,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.auth.google import verify_google_credential
+from app.auth.google import verify_google_access_token
 from app.models import User
 from app.schemas import (
     ForgotPasswordRequest,
@@ -65,7 +65,7 @@ def google_login(
     session: Session = Depends(get_session),
 ) -> TokenOut:
     try:
-        idinfo = verify_google_credential(body.credential)
+        idinfo = verify_google_access_token(body.access_token)
     except RuntimeError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     except ValueError as exc:

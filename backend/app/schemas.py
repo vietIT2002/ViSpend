@@ -13,7 +13,7 @@ class RegisterRequest(BaseModel):
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str = Field(min_length=1)
+    access_token: str = Field(min_length=1)
 
 
 class UserOut(BaseModel):

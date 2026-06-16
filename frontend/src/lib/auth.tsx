@@ -58,8 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.access_token);
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential: string) => {
-    const data = await api.post<{ access_token: string }>("/auth/google", { credential });
+  const loginWithGoogle = useCallback(async (accessToken: string) => {
+    const data = await api.post<{ access_token: string }>("/auth/google", {
+      access_token: accessToken,
+    });
     localStorage.setItem("vispend_token", data.access_token);
     setToken(data.access_token);
   }, []);
