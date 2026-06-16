@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { CategoryIcon, CATEGORY_ICONS, IconCheck, IconPencil, IconPlus, IconTrash, IconX } from "../../components/icons";
+import { CategoryIcon, IconCheck, IconPencil, IconPlus, IconTrash, IconX } from "../../components/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -95,7 +95,7 @@ export function CategoriesPage() {
                     icon === k ? "border-brand bg-brand-soft text-brand-dark" : "border-line text-muted hover:text-ink",
                   )}
                 >
-                  {CATEGORY_ICONS[k]?.({ size: 16 })}
+                  <CategoryIcon name={k} size={16} />
                 </button>
               ))}
             </div>
