@@ -29,6 +29,30 @@ const ALERT_LABEL: Record<BudgetAlert, string> = {
   tight: "Tight",
   over: "Over",
 };
+const BAR_COLOR: Record<BudgetAlert, string> = {
+  safe: "bg-brand",
+  watch: "bg-warn",
+  tight: "bg-expense",
+  over: "bg-expense",
+};
+
+function ProgressBar({ percent, alert }: { percent: number; alert: BudgetAlert }) {
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-black/[0.06]">
+      <div
+        className={cn("h-full rounded-full transition-[width] duration-300", BAR_COLOR[alert])}
+        style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+      />
+    </div>
+  );
+}
+
+function monthRange(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const short = new Date(y, m - 1, 1).toLocaleString("en-US", { month: "short" });
+  const last = new Date(y, m, 0).getDate();
+  return `${short} 1 – ${short} ${last}`;
+}
 
 function thisMonth() {
   const d = new Date();
@@ -68,7 +92,8 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
 
   const remaining = Number(item.remaining);
   return (
-    <div className="grid grid-cols-2 items-center gap-3 border-b border-line px-4 py-3.5 last:border-0 sm:grid-cols-[minmax(120px,1fr)_116px_96px_96px_56px_92px] sm:px-5">
+    <div className="border-b border-line px-4 py-3.5 last:border-0 sm:px-5">
+      <div className="grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(120px,1fr)_116px_96px_96px_56px_92px]">
       <div className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1">
         <span className="h-9 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color ?? "#cbd5d1" }} />
         <p className="truncate font-medium text-ink">{item.category}</p>
@@ -113,6 +138,10 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
         >
           <Trash2 size={15} />
         </Button>
+      </div>
+      </div>
+      <div className="mt-2.5">
+        <ProgressBar percent={item.usage_percent} alert={item.alert} />
       </div>
     </div>
   );
@@ -214,7 +243,10 @@ export function BudgetsPage() {
         {/* Month summary rail */}
         <div className="grid gap-4">
           <Card className="rise space-y-3 p-5">
-            <h2 className="font-medium text-ink">This month</h2>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="font-medium text-ink">This month</h2>
+              <span className="nums text-xs text-muted">{monthRange(month)}</span>
+            </div>
             <dl className="space-y-2 border-t border-line pt-3">
               {[
                 ["Total budget", vnd(plan?.monthly_budget ?? 0)],
@@ -227,6 +259,15 @@ export function BudgetsPage() {
                 </div>
               ))}
             </dl>
+            {monthlyBudget > 0 && (
+              <div className="space-y-1.5 border-t border-line pt-3">
+                <div className="flex items-center justify-between text-xs text-muted">
+                  <span>Spent of budget</span>
+                  <span className="nums">{plan?.total_usage_percent ?? 0}%</span>
+                </div>
+                <ProgressBar percent={plan?.total_usage_percent ?? 0} alert={plan?.total_alert ?? "safe"} />
+              </div>
+            )}
           </Card>
 
           <Card className="rise space-y-2 p-5" style={{ "--i": 1 } as React.CSSProperties}>
