@@ -2,6 +2,7 @@ import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -185,3 +186,48 @@ class CategorySpend(BaseModel):
     total: Decimal
     percent: int
     prev_total: Decimal
+
+
+BudgetAlert = Literal["safe", "watch", "tight", "over"]
+
+
+class BudgetMonthUpsert(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
+
+
+class BudgetAllocationUpsert(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    category_id: uuid.UUID
+    amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
+
+
+class BudgetCopyRequest(BaseModel):
+    from_month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    to_month: str = Field(pattern=r"^\d{4}-\d{2}$")
+
+
+class BudgetAllocationStatusOut(BaseModel):
+    id: uuid.UUID
+    category_id: uuid.UUID
+    category: str
+    color: str | None
+    amount: Decimal
+    spent: Decimal
+    remaining: Decimal
+    usage_percent: int
+    alert: BudgetAlert
+
+
+class BudgetPlanOut(BaseModel):
+    month: str
+    monthly_budget: Decimal
+    available_money: Decimal
+    allocated_total: Decimal
+    unallocated_amount: Decimal
+    total_spent: Decimal
+    total_remaining: Decimal
+    total_usage_percent: int
+    total_alert: BudgetAlert
+    alerts: dict[str, int]
+    items: list[BudgetAllocationStatusOut]

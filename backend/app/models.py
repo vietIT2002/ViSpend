@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -62,5 +63,31 @@ class Transaction(SQLModel, table=True):
     occurred_on: date = Field(index=True)
     method: PayMethod = PayMethod.cash
     note: str | None = None
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class BudgetMonth(SQLModel, table=True):
+    # One total spending budget per (user, calendar month).
+    __table_args__ = (UniqueConstraint("user_id", "month", name="uq_budget_month_user_month"),)
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+    month: date = Field(index=True)  # always the first day of the month
+    amount: Decimal = Field(max_digits=15, decimal_places=2)
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class BudgetAllocation(SQLModel, table=True):
+    # Optional category limit inside a monthly budget.
+    __table_args__ = (
+        UniqueConstraint("budget_month_id", "category_id", name="uq_budget_allocation_month_category"),
+    )
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    budget_month_id: uuid.UUID = Field(foreign_key="budgetmonth.id", index=True)
+    category_id: uuid.UUID = Field(foreign_key="category.id", index=True)
+    amount: Decimal = Field(max_digits=15, decimal_places=2)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
