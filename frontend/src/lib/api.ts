@@ -18,6 +18,23 @@ function token() {
   return localStorage.getItem("vispend_token");
 }
 
+// The auth provider registers a handler so any 401 on an authenticated request
+// can clear the expired session and send the user back to login.
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
+// 401s on these endpoints are normal failures (e.g. wrong password) and must
+// NOT trigger a session logout.
+const AUTH_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/google",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   const authToken = token();
@@ -29,6 +46,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      authToken &&
+      !AUTH_PATHS.some((p) => path.startsWith(p))
+    ) {
+      // The session token was rejected (expired/invalid): log out globally.
+      onUnauthorized?.();
+    }
     const body = await response.json().catch(() => ({ detail: response.statusText }));
     throw new ApiError(body.detail ?? response.statusText, response.status);
   }

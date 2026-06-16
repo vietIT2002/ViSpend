@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
-import { api } from "./api";
+import { api, setUnauthorizedHandler } from "./api";
 import type { User } from "../types";
 
 interface AuthContextValue {
@@ -79,6 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  // Any 401 on an authenticated request logs the user out (expired session).
+  useEffect(() => {
+    setUnauthorizedHandler(logout);
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   const value = useMemo(
     () => ({ user, token, loading, login, loginWithGoogle, register, logout }),
