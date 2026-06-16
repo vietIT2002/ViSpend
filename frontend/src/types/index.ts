@@ -81,10 +81,8 @@ export interface BudgetAllocationStatus {
 
 export interface BudgetPlan {
   month: string;
-  monthly_budget: string;
+  monthly_budget: string; // sum of category budgets
   available_money: string;
-  allocated_total: string;
-  unallocated_amount: string;
   total_spent: string;
   total_remaining: string;
   total_usage_percent: number;

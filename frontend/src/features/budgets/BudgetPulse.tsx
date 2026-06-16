@@ -75,8 +75,9 @@ export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
             <span className="nums">{vnd(plan!.total_remaining)}</span> left this month.
           </p>
           <p className="mt-1 text-sm text-muted">
-            <span className="nums">{vnd(plan!.allocated_total)}</span> allocated ·{" "}
-            <span className="nums">{vnd(plan!.unallocated_amount)}</span> unassigned
+            Across <span className="nums">{plan!.items.length}</span>{" "}
+            {plan!.items.length === 1 ? "category" : "categories"} ·{" "}
+            <span className="nums">{vnd(plan!.total_spent)}</span> spent
           </p>
           {risks.length > 0 && (
             <ul className="mt-4 divide-y divide-line border-t border-line">

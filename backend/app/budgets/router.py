@@ -10,7 +10,6 @@ from app.models import User
 from app.schemas import (
     BudgetAllocationUpsert,
     BudgetCopyRequest,
-    BudgetMonthUpsert,
     BudgetPlanOut,
 )
 
@@ -26,15 +25,6 @@ def get_plan(
     current: User = Depends(get_current_user),
 ) -> BudgetPlanOut:
     return service.get_plan(session, current, month)
-
-
-@router.put("/month", response_model=BudgetPlanOut)
-def upsert_month(
-    body: BudgetMonthUpsert,
-    session: Session = Depends(get_session),
-    current: User = Depends(get_current_user),
-) -> BudgetPlanOut:
-    return service.upsert_month(session, current, body.month, body.amount)
 
 
 @router.put("/allocations", response_model=BudgetPlanOut)

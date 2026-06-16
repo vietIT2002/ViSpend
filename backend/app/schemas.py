@@ -191,11 +191,6 @@ class CategorySpend(BaseModel):
 BudgetAlert = Literal["safe", "watch", "tight", "over"]
 
 
-class BudgetMonthUpsert(BaseModel):
-    month: str = Field(pattern=r"^\d{4}-\d{2}$")
-    amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
-
-
 class BudgetAllocationUpsert(BaseModel):
     month: str = Field(pattern=r"^\d{4}-\d{2}$")
     category_id: uuid.UUID
@@ -221,10 +216,8 @@ class BudgetAllocationStatusOut(BaseModel):
 
 class BudgetPlanOut(BaseModel):
     month: str
-    monthly_budget: Decimal
+    monthly_budget: Decimal  # sum of category budgets for the month
     available_money: Decimal
-    allocated_total: Decimal
-    unallocated_amount: Decimal
     total_spent: Decimal
     total_remaining: Decimal
     total_usage_percent: int

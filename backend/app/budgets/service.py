@@ -72,6 +72,16 @@ def _get_month(session: Session, user_id: uuid.UUID, first: date) -> BudgetMonth
     ).first()
 
 
+def _get_or_create_month(session: Session, user_id: uuid.UUID, first: date) -> BudgetMonth:
+    bm = _get_month(session, user_id, first)
+    if bm is None:
+        bm = BudgetMonth(user_id=user_id, month=first, amount=ZERO)
+        session.add(bm)
+        session.commit()
+        session.refresh(bm)
+    return bm
+
+
 def _spent_by_category(session: Session, user_id: uuid.UUID, first: date, last: date) -> dict:
     totals: dict = defaultdict(lambda: ZERO)
     txns = session.exec(
@@ -87,27 +97,30 @@ def _spent_by_category(session: Session, user_id: uuid.UUID, first: date, last: 
     return totals
 
 
+def _allocations(session: Session, budget_month_id: uuid.UUID) -> list[BudgetAllocation]:
+    return list(
+        session.exec(
+            select(BudgetAllocation).where(BudgetAllocation.budget_month_id == budget_month_id)
+        ).all()
+    )
+
+
 def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
     first, last = _month_bounds(month)
     available = _available_money(session, user.id)
     bm = _get_month(session, user.id, first)
-    monthly_budget = bm.amount if bm else ZERO
 
     spent_by_cat = _spent_by_category(session, user.id, first, last)
     total_spent = sum(spent_by_cat.values(), ZERO)
 
     cats = {c.id: c for c in session.exec(select(Category)).all()}
-    allocations = (
-        session.exec(select(BudgetAllocation).where(BudgetAllocation.budget_month_id == bm.id)).all()
-        if bm
-        else []
-    )
+    allocations = _allocations(session, bm.id) if bm else []
 
     alerts_count = {"safe": 0, "watch": 0, "tight": 0, "over": 0}
-    allocated_total = ZERO
+    monthly_budget = ZERO
     items: list[BudgetAllocationStatusOut] = []
     for a in allocations:
-        allocated_total += a.amount
+        monthly_budget += a.amount
         spent = spent_by_cat.get(a.category_id, ZERO)
         alert = _alert(spent, a.amount)
         alerts_count[alert] += 1
@@ -130,8 +143,6 @@ def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
         month=month,
         monthly_budget=_q(monthly_budget),
         available_money=_q(available),
-        allocated_total=_q(allocated_total),
-        unallocated_amount=_q(monthly_budget - allocated_total),
         total_spent=_q(total_spent),
         total_remaining=_q(monthly_budget - total_spent),
         total_usage_percent=_usage_percent(total_spent, monthly_budget),
@@ -141,49 +152,25 @@ def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
     )
 
 
-def upsert_month(session: Session, user: User, month: str, amount: Decimal) -> BudgetPlanOut:
-    if amount > _available_money(session, user.id):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Budget cannot exceed your available money."
-        )
-    first = _month_first_day(month)
-    bm = _get_month(session, user.id, first)
-    if bm:
-        bm.amount = amount
-        bm.updated_at = datetime.now(timezone.utc)
-    else:
-        bm = BudgetMonth(user_id=user.id, month=first, amount=amount)
-    session.add(bm)
-    session.commit()
-    return get_plan(session, user, month)
-
-
 def upsert_allocation(
     session: Session, user: User, month: str, category_id: uuid.UUID, amount: Decimal
 ) -> BudgetPlanOut:
-    first = _month_first_day(month)
-    bm = _get_month(session, user.id, first)
-    if bm is None:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Set a monthly budget before allocating to categories.",
-        )
     _owned_expense_category(session, user.id, category_id)
+    first = _month_first_day(month)
+    bm = _get_or_create_month(session, user.id, first)
 
-    existing_allocs = session.exec(
-        select(BudgetAllocation).where(BudgetAllocation.budget_month_id == bm.id)
-    ).all()
-    others_total = sum((a.amount for a in existing_allocs if a.category_id != category_id), ZERO)
-    if others_total + amount > bm.amount:
+    existing = _allocations(session, bm.id)
+    others_total = sum((a.amount for a in existing if a.category_id != category_id), ZERO)
+    if others_total + amount > _available_money(session, user.id):
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Allocations cannot exceed the monthly budget."
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Budget cannot exceed your available money."
         )
 
-    existing = next((a for a in existing_allocs if a.category_id == category_id), None)
-    if existing:
-        existing.amount = amount
-        existing.updated_at = datetime.now(timezone.utc)
-        session.add(existing)
+    current = next((a for a in existing if a.category_id == category_id), None)
+    if current:
+        current.amount = amount
+        current.updated_at = datetime.now(timezone.utc)
+        session.add(current)
     else:
         session.add(BudgetAllocation(budget_month_id=bm.id, category_id=category_id, amount=amount))
     session.commit()
@@ -205,27 +192,15 @@ def copy_plan(session: Session, user: User, from_month: str, to_month: str) -> B
     from_first = _month_first_day(from_month)
     to_first = _month_first_day(to_month)
     src = _get_month(session, user.id, from_first)
-    if src is None:
+    src_allocs = _allocations(session, src.id) if src else []
+    if not src_allocs:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "There is no budget in the source month to copy."
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "There are no category budgets to copy."
         )
 
-    dst = _get_month(session, user.id, to_first)
-    if dst is None:
-        dst = BudgetMonth(user_id=user.id, month=to_first, amount=src.amount)
-        session.add(dst)
-        session.commit()
-        session.refresh(dst)
-
-    existing_cats = {
-        a.category_id
-        for a in session.exec(
-            select(BudgetAllocation).where(BudgetAllocation.budget_month_id == dst.id)
-        ).all()
-    }
-    for a in session.exec(
-        select(BudgetAllocation).where(BudgetAllocation.budget_month_id == src.id)
-    ).all():
+    dst = _get_or_create_month(session, user.id, to_first)
+    existing_cats = {a.category_id for a in _allocations(session, dst.id)}
+    for a in src_allocs:
         if a.category_id not in existing_cats:
             session.add(
                 BudgetAllocation(budget_month_id=dst.id, category_id=a.category_id, amount=a.amount)
