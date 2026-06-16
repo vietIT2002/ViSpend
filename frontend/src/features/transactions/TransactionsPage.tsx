@@ -22,8 +22,6 @@ const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 function isLocked(t: Transaction) {
   return Date.now() - new Date(t.created_at).getTime() > EDIT_WINDOW_MS;
 }
-const LOCKED_HINT = "Locked: cannot be changed 24h after it was recorded";
-
 const amountClass = (type: TxnType) =>
   type === "income" ? "text-brand-dark" : "text-expense";
 const amountText = (t: Transaction) => `${t.type === "income" ? "+" : "-"}${vnd(t.amount)}`;
@@ -188,34 +186,34 @@ export function TransactionsPage() {
                           {amountText(t)}
                         </td>
                         <td className="px-5 py-3.5">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              disabled={locked}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEdit(t);
-                              }}
-                              title={locked ? LOCKED_HINT : "Edit"}
-                              aria-label="Edit transaction"
-                              className="size-9 px-0"
-                            >
-                              <IconPencil size={16} />
-                            </Button>
-                            <Button
-                              variant="danger"
-                              disabled={locked}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                del.mutate(t.id);
-                              }}
-                              title={locked ? LOCKED_HINT : "Delete"}
-                              aria-label="Delete transaction"
-                              className="size-9 px-0"
-                            >
-                              <IconTrash size={16} />
-                            </Button>
-                          </div>
+                          {!locked && (
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(t);
+                                }}
+                                title="Edit"
+                                aria-label="Edit transaction"
+                                className="size-9 px-0"
+                              >
+                                <IconPencil size={16} />
+                              </Button>
+                              <Button
+                                variant="danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  del.mutate(t.id);
+                                }}
+                                title="Delete"
+                                aria-label="Delete transaction"
+                                className="size-9 px-0"
+                              >
+                                <IconTrash size={16} />
+                              </Button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -358,34 +356,34 @@ function TransactionMobileCard({
           <Badge tone={t.type === "income" ? "green" : "red"}>{t.type}</Badge>
           <span className="text-xs capitalize text-muted">{t.method}</span>
         </div>
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            disabled={locked}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            title={locked ? LOCKED_HINT : "Edit"}
-            className="size-9 px-0"
-            aria-label="Edit transaction"
-          >
-            <IconPencil size={16} />
-          </Button>
-          <Button
-            variant="danger"
-            disabled={locked}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            title={locked ? LOCKED_HINT : "Delete"}
-            className="size-9 px-0"
-            aria-label="Delete transaction"
-          >
-            <IconTrash size={16} />
-          </Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              title="Edit"
+              className="size-9 px-0"
+              aria-label="Edit transaction"
+            >
+              <IconPencil size={16} />
+            </Button>
+            <Button
+              variant="danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete"
+              className="size-9 px-0"
+              aria-label="Delete transaction"
+            >
+              <IconTrash size={16} />
+            </Button>
+          </div>
+        )}
       </div>
     </article>
   );
