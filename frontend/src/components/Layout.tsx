@@ -1,4 +1,4 @@
-import { Menu, Settings, X } from "lucide-react";
+import { Menu, Settings, WalletCards, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import { IconDashboard, IconFlow, IconLogout, IconSpendMark, IconTag } from "./i
 const links = [
   { to: "/", label: "Overview", icon: IconDashboard },
   { to: "/transactions", label: "Transactions", icon: IconFlow },
+  { to: "/budgets", label: "Budgets", icon: WalletCards },
   { to: "/categories", label: "Categories", icon: IconTag },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

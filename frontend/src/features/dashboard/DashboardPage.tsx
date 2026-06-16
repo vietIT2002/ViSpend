@@ -38,6 +38,7 @@ import { Card } from "../../components/ui/card";
 import { PeriodSelector, rangeFor } from "../../components/ui/period-selector";
 import { Skeleton } from "../../components/ui/skeleton";
 import { cn, vnd } from "../../lib/utils";
+import { BudgetPulse } from "../budgets/BudgetPulse";
 import { useCategories } from "../categories/hooks";
 import { useTransactions } from "../transactions/hooks";
 import { previousPeriod, useCashflow, useCategorySpend, useSummary, useTrend } from "./hooks";
@@ -435,6 +436,8 @@ export function DashboardPage() {
       </header>
 
       {(cur.isError || prev.isError) && <InlineError message="Could not load dashboard summary. Please try again." />}
+
+      <BudgetPulse from={range.from} to={range.to} />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard

@@ -64,3 +64,31 @@ export interface CategorySpend {
   percent: number;
   prev_total: string;
 }
+
+export type BudgetAlert = "safe" | "watch" | "tight" | "over";
+
+export interface BudgetAllocationStatus {
+  id: string;
+  category_id: string;
+  category: string;
+  color: string | null;
+  amount: string;
+  spent: string;
+  remaining: string;
+  usage_percent: number;
+  alert: BudgetAlert;
+}
+
+export interface BudgetPlan {
+  month: string;
+  monthly_budget: string;
+  available_money: string;
+  allocated_total: string;
+  unallocated_amount: string;
+  total_spent: string;
+  total_remaining: string;
+  total_usage_percent: number;
+  total_alert: BudgetAlert;
+  alerts: Record<BudgetAlert, number>;
+  items: BudgetAllocationStatus[];
+}
