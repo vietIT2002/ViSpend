@@ -25,15 +25,15 @@ def test_budget_rejected_on_income_category(auth_client):
 
 def test_budget_isolated_per_user(client):
     # user A creates an expense category + budget
-    client.post("/api/auth/register", json={"email": "a@test.com", "password": "password123"})
-    ta = client.post("/api/auth/login", data={"username": "a@test.com", "password": "password123"}).json()["access_token"]
+    client.post("/api/auth/register", json={"username": "usera", "password": "Password123!"})
+    ta = client.post("/api/auth/login", data={"username": "usera", "password": "Password123!"}).json()["access_token"]
     ha = {"Authorization": f"Bearer {ta}"}
     cid = client.post("/api/categories", json={"name": "Food", "type": "expense"}, headers=ha).json()["id"]
     client.put(f"/api/budgets/{cid}", json={"amount": "500000"}, headers=ha)
 
     # user B cannot budget A's private category, and sees no budgets
-    client.post("/api/auth/register", json={"email": "b@test.com", "password": "password123"})
-    tb = client.post("/api/auth/login", data={"username": "b@test.com", "password": "password123"}).json()["access_token"]
+    client.post("/api/auth/register", json={"username": "userb", "password": "Password123!"})
+    tb = client.post("/api/auth/login", data={"username": "userb", "password": "Password123!"}).json()["access_token"]
     hb = {"Authorization": f"Bearer {tb}"}
     assert client.put(f"/api/budgets/{cid}", json={"amount": "1"}, headers=hb).status_code == 404
     assert client.get("/api/budgets", headers=hb).json() == []

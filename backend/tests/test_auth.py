@@ -2,46 +2,63 @@ from sqlmodel import select
 
 from app.auth import router as auth_router
 from app.core.config import settings
+from app.core.security import hash_password
 from app.models import User
 
 
 def test_register_then_login(client):
     r = client.post(
         "/api/auth/register",
-        json={"email": "u@test.com", "password": "password123"},
+        json={"username": "usertest", "password": "Password123!"},
     )
     assert r.status_code == 201
-    assert r.json()["email"] == "u@test.com"
+    assert r.json()["username"] == "usertest"
 
     r = client.post(
         "/api/auth/login",
-        data={"username": "u@test.com", "password": "password123"},
+        data={"username": "usertest", "password": "Password123!"},
     )
     assert r.status_code == 200
     assert "access_token" in r.json()
     assert r.json()["token_type"] == "bearer"
 
 
+def test_register_rejects_weak_password(client):
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "weakpass", "password": "password123"},
+    )
+    assert r.status_code == 422
+
+
+def test_register_rejects_invalid_username(client):
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "Bad User!", "password": "Password123!"},
+    )
+    assert r.status_code == 422
+
+
 def test_login_wrong_password(client):
     client.post(
         "/api/auth/register",
-        json={"email": "u@test.com", "password": "password123"},
+        json={"username": "usertest", "password": "Password123!"},
     )
     r = client.post(
         "/api/auth/login",
-        data={"username": "u@test.com", "password": "wrong"},
+        data={"username": "usertest", "password": "Wrongpass1!"},
     )
     assert r.status_code == 401
 
 
-def test_register_duplicate_email(client):
+def test_register_duplicate_username(client):
     client.post(
         "/api/auth/register",
-        json={"email": "u@test.com", "password": "password123"},
+        json={"username": "usertest", "password": "Password123!"},
     )
     r = client.post(
         "/api/auth/register",
-        json={"email": "u@test.com", "password": "other123"},
+        json={"username": "usertest", "password": "Other123!"},
     )
     assert r.status_code == 409
 
@@ -53,7 +70,7 @@ def test_me_requires_auth(client):
 def test_me_returns_current_user(auth_client):
     r = auth_client.get("/api/auth/me")
     assert r.status_code == 200
-    assert r.json()["email"] == "a@test.com"
+    assert r.json()["username"] == "atester"
 
 
 def test_google_login_creates_verified_user_and_returns_token(client, session, monkeypatch):
@@ -91,11 +108,9 @@ def test_google_login_creates_verified_user_and_returns_token(client, session, m
 
 def test_google_login_links_existing_email_account(client, session, monkeypatch):
     monkeypatch.setattr(settings, "google_client_id", "test-client-id", raising=False)
-    client.post(
-        "/api/auth/register",
-        json={"email": "existing@test.com", "password": "password123"},
-    )
-    existing = session.exec(select(User).where(User.email == "existing@test.com")).one()
+    existing = User(email="existing@test.com", hashed_password=hash_password("Password123!"))
+    session.add(existing)
+    session.commit()
 
     def fake_verify_google_access_token(_: str) -> dict:
         return {

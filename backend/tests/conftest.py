@@ -45,10 +45,10 @@ def client_fixture(session):
 @pytest.fixture
 def auth_client(client):
     """Client already registered + logged in, with the Authorization header set."""
-    client.post("/api/auth/register", json={"email": "a@test.com", "password": "password123"})
+    client.post("/api/auth/register", json={"username": "atester", "password": "Password123!"})
     r = client.post(
         "/api/auth/login",
-        data={"username": "a@test.com", "password": "password123"},
+        data={"username": "atester", "password": "Password123!"},
     )
     token = r.json()["access_token"]
     client.headers.update({"Authorization": f"Bearer {token}"})

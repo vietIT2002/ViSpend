@@ -21,8 +21,20 @@ import { useAuth } from "../../lib/auth";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  password: z.string().min(6, "At least 6 characters"),
+  username: z
+    .string()
+    .regex(/^[a-z0-9]{3,20}$/, "3-20 characters, lowercase letters and digits only"),
+  password: z
+    .string()
+    .refine(
+      (v) =>
+        v.length >= 8 &&
+        /[A-Z]/.test(v) &&
+        /[a-z]/.test(v) &&
+        /\d/.test(v) &&
+        /[^A-Za-z0-9]/.test(v),
+      "At least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character",
+    ),
 });
 
 type Form = z.infer<typeof schema>;
@@ -253,9 +265,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setError(null);
     try {
       if (isLogin) {
-        await login(values.email, values.password);
+        await login(values.username, values.password);
       } else {
-        await register(values.email, values.password);
+        await register(values.username, values.password);
       }
       navigate("/");
     } catch (err) {
@@ -349,18 +361,18 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
             <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
               <div>
-                <Label htmlFor="email" className="mb-3 text-base font-medium normal-case tracking-normal text-ink">
-                  Email
+                <Label htmlFor="username" className="mb-3 text-base font-medium normal-case tracking-normal text-ink">
+                  Username
                 </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="Enter your email"
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Enter your username"
                   className="h-[52px] rounded-lg px-5 text-base"
-                  {...field("email")}
+                  {...field("username")}
                 />
-                {errors.email && <p className="mt-2 text-sm text-pastel-red-ink">{errors.email.message}</p>}
+                {errors.username && <p className="mt-2 text-sm text-pastel-red-ink">{errors.username.message}</p>}
               </div>
 
               <div>

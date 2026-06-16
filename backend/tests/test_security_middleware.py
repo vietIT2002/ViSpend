@@ -6,11 +6,11 @@ def test_security_headers_are_set(client):
 
 
 def test_login_is_rate_limited(client):
-    client.post("/api/auth/register", json={"email": "rl@test.com", "password": "password123"})
+    client.post("/api/auth/register", json={"username": "ratelimit", "password": "Password123!"})
     codes = [
         client.post(
             "/api/auth/login",
-            data={"username": "rl@test.com", "password": "wrong"},
+            data={"username": "ratelimit", "password": "wrong"},
         ).status_code
         for _ in range(12)
     ]

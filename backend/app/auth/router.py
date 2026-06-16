@@ -34,10 +34,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def register(
     request: Request, body: RegisterRequest, session: Session = Depends(get_session)
 ) -> User:
-    exists = session.exec(select(User).where(User.email == body.email)).first()
+    exists = session.exec(select(User).where(User.username == body.username)).first()
     if exists:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    user = User(email=body.email, hashed_password=hash_password(body.password))
+        raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+    user = User(username=body.username, hashed_password=hash_password(body.password))
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -51,9 +51,9 @@ def login(
     form: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session),
 ) -> TokenOut:
-    user = session.exec(select(User).where(User.email == form.username)).first()
+    user = session.exec(select(User).where(User.username == form.username)).first()
     if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
     return TokenOut(access_token=create_access_token(subject=str(user.id)))
 
 

@@ -3,7 +3,8 @@ export type PayMethod = "cash" | "transfer" | "card";
 
 export interface User {
   id: string;
-  email: string;
+  username: string | null;
+  email: string | null;
   is_verified: boolean;
 }
 

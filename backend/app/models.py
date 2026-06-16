@@ -28,7 +28,10 @@ def _now() -> datetime:
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
-    email: str = Field(index=True, unique=True)
+    # username for password accounts; email for Google accounts. Either may be
+    # null, both are unique when present.
+    username: str | None = Field(default=None, index=True, unique=True)
+    email: str | None = Field(default=None, index=True, unique=True)
     hashed_password: str
     google_sub: str | None = Field(default=None, index=True, unique=True)
     is_active: bool = True

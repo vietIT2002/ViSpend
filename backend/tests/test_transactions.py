@@ -69,15 +69,15 @@ def test_transaction_filters_by_type_and_date(auth_client):
 
 
 def test_cannot_use_other_users_category(client):
-    client.post("/api/auth/register", json={"email": "a@test.com", "password": "password123"})
-    r = client.post("/api/auth/login", data={"username": "a@test.com", "password": "password123"})
+    client.post("/api/auth/register", json={"username": "usera", "password": "Password123!"})
+    r = client.post("/api/auth/login", data={"username": "usera", "password": "Password123!"})
     client.headers.update({"Authorization": f"Bearer {r.json()['access_token']}"})
     r = client.post("/api/categories", json={"name": "Private", "type": "expense"})
     private_category_id = r.json()["id"]
 
     client.headers.clear()
-    client.post("/api/auth/register", json={"email": "b@test.com", "password": "password123"})
-    r = client.post("/api/auth/login", data={"username": "b@test.com", "password": "password123"})
+    client.post("/api/auth/register", json={"username": "userb", "password": "Password123!"})
+    r = client.post("/api/auth/login", data={"username": "userb", "password": "Password123!"})
     client.headers.update({"Authorization": f"Bearer {r.json()['access_token']}"})
     r = client.post(
         "/api/transactions",

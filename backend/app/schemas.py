@@ -1,15 +1,42 @@
+import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models import PayMethod, TxnType
 
+USERNAME_RE = re.compile(r"^[a-z0-9]{3,20}$")
+
+
+def _validate_username(value: str) -> str:
+    if not USERNAME_RE.match(value):
+        raise ValueError("Username must be 3-20 characters, lowercase letters and digits only")
+    return value
+
+
+def _validate_password(value: str) -> str:
+    if (
+        len(value) < 8
+        or not re.search(r"[A-Z]", value)
+        or not re.search(r"[a-z]", value)
+        or not re.search(r"\d", value)
+        or not re.search(r"[^A-Za-z0-9]", value)
+    ):
+        raise ValueError(
+            "Password must be at least 8 characters and include an uppercase letter, "
+            "a lowercase letter, a number, and a special character"
+        )
+    return value
+
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=6, max_length=128)
+    username: str = Field(min_length=3, max_length=20)
+    password: str = Field(min_length=8, max_length=128)
+
+    _check_username = field_validator("username")(_validate_username)
+    _check_password = field_validator("password")(_validate_password)
 
 
 class GoogleLoginRequest(BaseModel):
@@ -20,7 +47,8 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    email: EmailStr
+    username: str | None
+    email: EmailStr | None
     is_verified: bool
 
 
@@ -35,7 +63,9 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    new_password: str = Field(min_length=6, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    _check_password = field_validator("new_password")(_validate_password)
 
 
 class CategoryCreate(BaseModel):

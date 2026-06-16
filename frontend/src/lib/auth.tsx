@@ -15,9 +15,9 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: (accessToken: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -49,9 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void loadMe();
   }, [loadMe]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     const form = new FormData();
-    form.set("username", email);
+    form.set("username", username);
     form.set("password", password);
     const data = await api.post<{ access_token: string }>("/auth/login", form);
     localStorage.setItem("vispend_token", data.access_token);
@@ -67,9 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string) => {
-      await api.post<User>("/auth/register", { email, password });
-      await login(email, password);
+    async (username: string, password: string) => {
+      await api.post<User>("/auth/register", { username, password });
+      await login(username, password);
     },
     [login],
   );
