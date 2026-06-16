@@ -18,8 +18,10 @@ from app.core.security import (
 from app.auth.google import verify_google_access_token
 from app.models import User
 from app.schemas import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleLoginRequest,
+    ProfileUpdate,
     RegisterRequest,
     ResetPasswordRequest,
     TokenOut,
@@ -102,6 +104,48 @@ def google_login(
 @router.get("/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)) -> User:
     return current
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    body: ProfileUpdate,
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> User:
+    data = body.model_dump(exclude_unset=True)
+    if "username" in data and data["username"] is not None and data["username"] != current.username:
+        clash = session.exec(
+            select(User).where(User.username == data["username"], User.id != current.id)
+        ).first()
+        if clash:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+        current.username = data["username"]
+    if "email" in data and data["email"] != current.email:
+        if data["email"] is not None:
+            clash = session.exec(
+                select(User).where(User.email == data["email"], User.id != current.id)
+            ).first()
+            if clash:
+                raise HTTPException(status.HTTP_409_CONFLICT, "Email is already in use")
+        current.email = data["email"]
+    session.add(current)
+    session.commit()
+    session.refresh(current)
+    return current
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> dict:
+    if not verify_password(body.current_password, current.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+    current.hashed_password = hash_password(body.new_password)
+    session.add(current)
+    session.commit()
+    return {"detail": "Password updated"}
 
 
 @router.post("/forgot-password")

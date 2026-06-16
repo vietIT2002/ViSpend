@@ -1,4 +1,4 @@
-import { Menu, X } from "lucide-react";
+import { Menu, Settings, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -11,6 +11,7 @@ const links = [
   { to: "/", label: "Overview", icon: IconDashboard },
   { to: "/transactions", label: "Transactions", icon: IconFlow },
   { to: "/categories", label: "Categories", icon: IconTag },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

@@ -26,6 +26,9 @@ const TransactionsPage = lazy(() =>
 const CategoriesPage = lazy(() =>
   import("./features/categories/CategoriesPage").then((m) => ({ default: m.CategoriesPage })),
 );
+const SettingsPage = lazy(() =>
+  import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
 
 function withSuspense(element: ReactNode) {
   return (
@@ -48,6 +51,7 @@ export const router = createBrowserRouter([
       { index: true, element: withSuspense(<DashboardPage />) },
       { path: "transactions", element: withSuspense(<TransactionsPage />) },
       { path: "categories", element: withSuspense(<CategoriesPage />) },
+      { path: "settings", element: withSuspense(<SettingsPage />) },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

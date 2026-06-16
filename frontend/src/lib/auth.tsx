@@ -18,6 +18,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   loginWithGoogle: (accessToken: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -74,6 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   );
 
+  const refreshUser = useCallback(async () => {
+    try {
+      setUser(await api.get<User>("/auth/me"));
+    } catch {
+      // ignore; a 401 is handled globally by the API client
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem("vispend_token");
     setToken(null);
@@ -87,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   const value = useMemo(
-    () => ({ user, token, loading, login, loginWithGoogle, register, logout }),
-    [loading, login, loginWithGoogle, logout, register, token, user],
+    () => ({ user, token, loading, login, loginWithGoogle, register, refreshUser, logout }),
+    [loading, login, loginWithGoogle, logout, refreshUser, register, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

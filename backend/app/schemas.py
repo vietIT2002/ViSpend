@@ -68,6 +68,23 @@ class ResetPasswordRequest(BaseModel):
     _check_password = field_validator("new_password")(_validate_password)
 
 
+class ProfileUpdate(BaseModel):
+    username: str | None = None
+    email: EmailStr | None = None
+
+    @field_validator("username")
+    @classmethod
+    def _check_username(cls, value: str | None) -> str | None:
+        return value if value is None else _validate_username(value)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    _check_new_password = field_validator("new_password")(_validate_password)
+
+
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50)
     type: TxnType
