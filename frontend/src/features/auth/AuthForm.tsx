@@ -235,10 +235,6 @@ function BottomBenefit({
   );
 }
 
-function SocialMark() {
-  return <span className="inline-grid size-5 place-items-center text-base font-semibold text-black">A</span>;
-}
-
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
   const { login, loginWithGoogle, register } = useAuth();
@@ -265,10 +261,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
-  }
-
-  function socialUnavailable(provider: "Google" | "Apple") {
-    setError(`${provider} sign-in is not configured yet. Please use email and password.`);
   }
 
   const handleGoogleCredential = useCallback(
@@ -421,20 +413,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 <span className="h-px bg-line" />
               </div>
 
-              <div className="mt-5 space-y-3">
+              <div className="mt-5">
                 <GoogleSignInButton
                   disabled={googleBusy || isSubmitting}
                   onCredential={handleGoogleCredential}
                   onError={handleGoogleError}
                 />
-                <button
-                  type="button"
-                  onClick={() => socialUnavailable("Apple")}
-                  className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-line bg-white text-base font-medium text-charcoal transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-[0.99]"
-                >
-                  <SocialMark />
-                  Continue with Apple
-                </button>
               </div>
             </div>
 
