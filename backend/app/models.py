@@ -33,10 +33,16 @@ class User(SQLModel, table=True):
     username: str | None = Field(default=None, index=True, unique=True)
     email: str | None = Field(default=None, index=True, unique=True)
     hashed_password: str
+    full_name: str | None = None
+    phone: str | None = None
     google_sub: str | None = Field(default=None, index=True, unique=True)
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=_now)
+
+    @property
+    def is_google(self) -> bool:
+        return self.google_sub is not None
 
 
 class Category(SQLModel, table=True):

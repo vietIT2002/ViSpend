@@ -49,7 +49,10 @@ class UserOut(BaseModel):
     id: uuid.UUID
     username: str | None
     email: EmailStr | None
+    full_name: str | None
+    phone: str | None
     is_verified: bool
+    is_google: bool
 
 
 class TokenOut(BaseModel):
@@ -69,13 +72,24 @@ class ResetPasswordRequest(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
+    # Email is fixed and intentionally not editable here.
     username: str | None = None
-    email: EmailStr | None = None
+    full_name: str | None = Field(default=None, max_length=80)
+    phone: str | None = Field(default=None, max_length=20)
 
     @field_validator("username")
     @classmethod
     def _check_username(cls, value: str | None) -> str | None:
         return value if value is None else _validate_username(value)
+
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, value: str | None) -> str | None:
+        if not value:
+            return value
+        if not re.match(r"^[0-9+\-\s]{6,20}$", value):
+            raise ValueError("Enter a valid phone number")
+        return value
 
 
 class ChangePasswordRequest(BaseModel):

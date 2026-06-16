@@ -120,14 +120,10 @@ def update_me(
         if clash:
             raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
         current.username = data["username"]
-    if "email" in data and data["email"] != current.email:
-        if data["email"] is not None:
-            clash = session.exec(
-                select(User).where(User.email == data["email"], User.id != current.id)
-            ).first()
-            if clash:
-                raise HTTPException(status.HTTP_409_CONFLICT, "Email is already in use")
-        current.email = data["email"]
+    if "full_name" in data:
+        current.full_name = data["full_name"] or None
+    if "phone" in data:
+        current.phone = data["phone"] or None
     session.add(current)
     session.commit()
     session.refresh(current)

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AtSign, Check, Eye, EyeOff, Lock, ShieldCheck, UserRound } from "lucide-react";
+import { Check, Eye, EyeOff, IdCard, Lock, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,7 +24,11 @@ const profileSchema = z.object({
   username: z
     .string()
     .regex(/^[a-z0-9]{3,20}$/, "3-20 characters, lowercase letters and digits only"),
-  email: z.union([z.string().email("Enter a valid email address"), z.literal("")]),
+  full_name: z.union([z.string().max(80, "Name is too long"), z.literal("")]),
+  phone: z.union([
+    z.string().regex(/^[0-9+\-\s]{6,20}$/, "Enter a valid phone number"),
+    z.literal(""),
+  ]),
 });
 type ProfileForm = z.infer<typeof profileSchema>;
 
@@ -157,14 +161,22 @@ function ProfileCard() {
     formState: { errors, isSubmitting },
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
-    values: { username: user?.username ?? "", email: user?.email ?? "" },
+    values: {
+      username: user?.username ?? "",
+      full_name: user?.full_name ?? "",
+      phone: user?.phone ?? "",
+    },
   });
   const [notice, setNotice] = useState<Notice>(null);
 
   async function onSubmit(data: ProfileForm) {
     setNotice(null);
     try {
-      await api.patch("/auth/me", { username: data.username, email: data.email ? data.email : null });
+      await api.patch("/auth/me", {
+        username: data.username,
+        full_name: data.full_name ? data.full_name : null,
+        phone: data.phone ? data.phone : null,
+      });
       await refreshUser();
       setNotice({ tone: "ok", text: "Profile updated." });
     } catch (err) {
@@ -174,8 +186,16 @@ function ProfileCard() {
 
   return (
     <Card className="rise space-y-5 p-5 sm:p-6" style={rise(1)}>
-      <SectionHead icon={UserRound} title="Personal information" hint="Update your username and contact email." />
+      <SectionHead icon={UserRound} title="Profile information" hint="Update your name, username, and phone." />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <IField
+          id="full_name"
+          label="Full name"
+          icon={IdCard}
+          placeholder="Your name"
+          error={errors.full_name?.message}
+          {...register("full_name")}
+        />
         <IField
           id="username"
           label="Username"
@@ -185,16 +205,29 @@ function ProfileCard() {
           {...register("username")}
         />
         <IField
-          id="email"
-          label="Email (optional)"
-          icon={AtSign}
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          error={errors.email?.message}
-          {...register("email")}
+          id="phone"
+          label="Phone"
+          icon={Phone}
+          placeholder="e.g. 0901234567"
+          error={errors.phone?.message}
+          {...register("phone")}
         />
-        <p className="-mt-2 text-xs text-muted">Used for Google sign-in and password reset.</p>
+        <div>
+          <Label htmlFor="email">Email (can&apos;t be changed)</Label>
+          <div className="relative">
+            <Mail
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <Input
+              id="email"
+              value={user?.email ?? "—"}
+              disabled
+              readOnly
+              className="cursor-not-allowed bg-canvas pl-9 text-muted"
+            />
+          </div>
+        </div>
         <NoticeBar notice={notice} />
         <div className="flex justify-end">
           <Button disabled={isSubmitting}>
@@ -305,6 +338,10 @@ function PasswordCard() {
 }
 
 export function SettingsPage() {
+  const { user } = useAuth();
+  // Google accounts sign in through Google, so there's no password to change.
+  const showPassword = user ? !user.is_google : false;
+
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <header className="max-w-2xl space-y-1">
@@ -313,9 +350,9 @@ export function SettingsPage() {
         <p className="text-sm text-muted">Manage your account details and security.</p>
       </header>
       <AccountSummary />
-      <div className="grid items-start gap-5 lg:grid-cols-2">
+      <div className={cn("grid items-start gap-5", showPassword && "lg:grid-cols-2")}>
         <ProfileCard />
-        <PasswordCard />
+        {showPassword && <PasswordCard />}
       </div>
     </div>
   );

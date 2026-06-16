@@ -5,7 +5,10 @@ export interface User {
   id: string;
   username: string | null;
   email: string | null;
+  full_name: string | null;
+  phone: string | null;
   is_verified: boolean;
+  is_google: boolean;
 }
 
 export interface Category {
