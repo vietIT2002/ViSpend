@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from sqlmodel import Session, select
 
-from app.models import Budget, Category, Transaction, TxnType, User
+from app.models import Category, Transaction, TxnType, User
 from app.schemas import CategorySpend, CategoryTotal, DashboardSummary, TrendPoint
 
 
@@ -76,7 +76,7 @@ def _expense_totals_by_category(
 def category_spend(
     session: Session, user: User, from_date: date, to_date: date
 ) -> list[CategorySpend]:
-    """Expense per category for the period, with budget and previous-period total.
+    """Expense per category for the period, with the previous-period total.
     Sorted by spend (highest first) so the biggest spends surface at the top."""
     length = (to_date - from_date).days + 1
     prev_to = from_date - timedelta(days=1)
@@ -86,10 +86,6 @@ def category_spend(
     previous = _expense_totals_by_category(session, user, prev_from, prev_to)
 
     cats = {c.id: c for c in session.exec(select(Category)).all()}
-    budgets = {
-        b.category_id: b.amount
-        for b in session.exec(select(Budget).where(Budget.user_id == user.id)).all()
-    }
     grand_total = sum(current.values(), Decimal("0"))
 
     rows = [
@@ -99,7 +95,6 @@ def category_spend(
             color=cats[cid].color if cid in cats else None,
             total=total,
             percent=int(round((total / grand_total) * 100)) if grand_total else 0,
-            budget=budgets.get(cid),
             prev_total=previous.get(cid, Decimal("0")),
         )
         for cid, total in current.items()

@@ -3,7 +3,6 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -65,13 +64,3 @@ class Transaction(SQLModel, table=True):
     note: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
-
-
-class Budget(SQLModel, table=True):
-    # One monthly spending limit per (user, expense category).
-    __table_args__ = (UniqueConstraint("user_id", "category_id", name="uq_budget_user_category"),)
-
-    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
-    category_id: uuid.UUID = Field(foreign_key="category.id", index=True)
-    amount: Decimal = Field(max_digits=15, decimal_places=2)

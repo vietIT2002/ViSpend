@@ -178,22 +178,10 @@ class TrendPoint(BaseModel):
     expense: Decimal
 
 
-class BudgetOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    category_id: uuid.UUID
-    amount: Decimal
-
-
-class BudgetUpsert(BaseModel):
-    amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
-
-
 class CategorySpend(BaseModel):
     category_id: uuid.UUID
     category: str
     color: str | None
     total: Decimal
     percent: int
-    budget: Decimal | None
     prev_total: Decimal
