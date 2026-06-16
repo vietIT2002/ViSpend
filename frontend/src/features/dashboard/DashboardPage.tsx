@@ -731,14 +731,21 @@ export function DashboardPage() {
           ) : (
             <ul className="divide-y divide-line">
               {recentItems.map((txn) => (
-                <li key={txn.id} className="grid grid-cols-[82px_minmax(0,1fr)_70px_120px] items-center gap-3 px-4 py-3 sm:px-5">
+                <li key={txn.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                   <Badge tone={txn.type === "income" ? "green" : "red"}>{txn.type}</Badge>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{catName(txn.category_id)}</p>
-                    {txn.note && <p className="truncate text-xs text-muted">{txn.note}</p>}
+                    <p className="nums truncate text-xs text-muted">
+                      {format(parseDate(txn.occurred_on), "dd MMM yyyy")}
+                      {txn.note ? ` · ${txn.note}` : ""}
+                    </p>
                   </div>
-                  <span className="nums text-xs text-muted">{format(parseDate(txn.occurred_on), "dd MMM")}</span>
-                  <span className={cn("nums text-right text-sm font-semibold", txn.type === "income" ? "text-brand-dark" : "text-ink")}>
+                  <span
+                    className={cn(
+                      "nums shrink-0 text-right text-sm font-semibold",
+                      txn.type === "income" ? "text-brand-dark" : "text-ink",
+                    )}
+                  >
                     {txn.type === "income" ? "+" : "-"}
                     {vnd(txn.amount)}
                   </span>
