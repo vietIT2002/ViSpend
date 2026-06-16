@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -15,6 +15,8 @@ import { useCategories } from "../categories/hooks";
 import { TransactionModal } from "./TransactionModal";
 import { useDeleteTransaction, useTransactions, type TxnFilter } from "./hooks";
 
+const PAGE_SIZE = 20;
+
 // Transactions can only be edited/deleted within 24h of being recorded.
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 function isLocked(t: Transaction) {
@@ -28,17 +30,30 @@ const amountText = (t: Transaction) => `${t.type === "income" ? "+" : "-"}${vnd(
 
 export function TransactionsPage() {
   const [filter, setFilter] = useState<TxnFilter>({});
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [newType, setNewType] = useState<TxnType>("expense");
 
-  const { data, isLoading } = useTransactions(filter);
+  const { data, isLoading } = useTransactions({ ...filter, page, page_size: PAGE_SIZE });
   const { data: cats = [] } = useCategories();
   const del = useDeleteTransaction();
   const catName = (id: string) => cats.find((c) => c.id === id)?.name ?? "Unknown";
   const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filterCats = cats.filter((c) => !filter.type || c.type === filter.type);
+
+  // Reset to the first page whenever the filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  // Keep the page in range if the result set shrinks (e.g. after deleting).
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   function openAdd(type: TxnType) {
     setEditing(null);
@@ -208,6 +223,35 @@ export function TransactionsPage() {
                 </tbody>
               </table>
             </div>
+
+            {total > PAGE_SIZE && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
+                <span className="nums text-xs text-muted">
+                  {(page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, total)} of {total}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="h-9 px-3"
+                  >
+                    Prev
+                  </Button>
+                  <span className="nums text-xs text-muted">
+                    Page {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="h-9 px-3"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </Card>
