@@ -53,7 +53,9 @@ def upgrade() -> None:
             category.update()
             .where(category.c.user_id.is_(None))
             .where(category.c.name == name)
-            .where(category.c.type == type_)
+            # `type` is a native enum (txntype) in Postgres; cast to text so the
+            # comparison against a string bound parameter is valid.
+            .where(sa.cast(category.c.type, sa.String()) == type_)
             .values(key=key)
         )
 
