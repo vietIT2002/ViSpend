@@ -36,6 +36,7 @@ class User(SQLModel, table=True):
     full_name: str | None = None
     phone: str | None = None
     google_sub: str | None = Field(default=None, index=True, unique=True)
+    language: str = Field(default="en")  # UI language: "en" or "vi"
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=_now)
@@ -52,6 +53,9 @@ class Category(SQLModel, table=True):
     type: TxnType
     icon: str | None = None
     color: str | None = None
+    # Stable identifier for default (seeded) categories so the UI can localize
+    # their names. Null for user-created categories.
+    key: str | None = Field(default=None, index=True)
 
 
 class Transaction(SQLModel, table=True):

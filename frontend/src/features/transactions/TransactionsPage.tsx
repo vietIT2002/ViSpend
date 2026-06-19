@@ -9,6 +9,7 @@ import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { IconFlow, IconPencil, IconPlus, IconTrash } from "../../components/icons";
+import { useCategoryLabel, useT } from "../../lib/i18n";
 import { vnd } from "../../lib/utils";
 import type { Transaction, TxnType } from "../../types";
 import { useCategories } from "../categories/hooks";
@@ -37,7 +38,12 @@ export function TransactionsPage() {
   const { data, isLoading } = useTransactions({ ...filter, page, page_size: PAGE_SIZE });
   const { data: cats = [] } = useCategories();
   const del = useDeleteTransaction();
-  const catName = (id: string) => cats.find((c) => c.id === id)?.name ?? "Unknown";
+  const t = useT();
+  const categoryLabel = useCategoryLabel();
+  const catName = (id: string) => {
+    const c = cats.find((c) => c.id === id);
+    return c ? categoryLabel(c) : t("txn.unknown");
+  };
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -68,16 +74,16 @@ export function TransactionsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Ledger</p>
-          <h1 className="display text-3xl text-ink sm:text-4xl">Record money in and out fast.</h1>
-          <p className="text-sm text-muted">Filter by type, category, and date without leaving the ledger.</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("txn.ledger")}</p>
+          <h1 className="display text-3xl text-ink sm:text-4xl">{t("txn.title")}</h1>
+          <p className="text-sm text-muted">{t("txn.subtitle")}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button onClick={() => openAdd("expense")}>
-            <IconPlus size={16} /> Expense
+            <IconPlus size={16} /> {t("type.expense")}
           </Button>
           <Button variant="secondary" onClick={() => openAdd("income")}>
-            <IconPlus size={16} /> Income
+            <IconPlus size={16} /> {t("type.income")}
           </Button>
         </div>
       </header>
@@ -94,37 +100,37 @@ export function TransactionsPage() {
               }))
             }
           >
-            <option value="">All types</option>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
+            <option value="">{t("txn.allTypes")}</option>
+            <option value="expense">{t("type.expense")}</option>
+            <option value="income">{t("type.income")}</option>
           </Select>
           <Select
             value={filter.category_id ?? ""}
             onChange={(e) => setFilter((f) => ({ ...f, category_id: e.target.value || undefined }))}
           >
-            <option value="">All categories</option>
+            <option value="">{t("txn.allCategories")}</option>
             {filterCats.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {categoryLabel(c)}
               </option>
             ))}
           </Select>
           <Input
             type="date"
             className="nums"
-            aria-label="From date"
+            aria-label={t("txn.fromDate")}
             onChange={(e) => setFilter((f) => ({ ...f, from: e.target.value || undefined }))}
           />
-          <span className="hidden text-sm text-muted lg:inline">to</span>
+          <span className="hidden text-sm text-muted lg:inline">{t("period.to")}</span>
           <Input
             type="date"
             className="nums"
-            aria-label="To date"
+            aria-label={t("txn.toDate")}
             onChange={(e) => setFilter((f) => ({ ...f, to: e.target.value || undefined }))}
           />
           {data && (
             <span className="nums text-sm text-muted lg:text-right">
-              {data.total} {data.total === 1 ? "entry" : "entries"}
+              {t(data.total === 1 ? "txn.entriesOne" : "txn.entriesOther", { count: data.total })}
             </span>
           )}
         </div>
@@ -138,15 +144,15 @@ export function TransactionsPage() {
         ) : (
           <>
             <div className="divide-y divide-line md:hidden">
-              {items.map((t) => (
+              {items.map((txn) => (
                 <TransactionMobileCard
-                  key={t.id}
-                  transaction={t}
-                  category={catName(t.category_id)}
-                  locked={isLocked(t)}
-                  onView={() => setViewing(t)}
-                  onEdit={() => openEdit(t)}
-                  onDelete={() => del.mutate(t.id)}
+                  key={txn.id}
+                  transaction={txn}
+                  category={catName(txn.category_id)}
+                  locked={isLocked(txn)}
+                  onView={() => setViewing(txn)}
+                  onEdit={() => openEdit(txn)}
+                  onDelete={() => del.mutate(txn.id)}
                 />
               ))}
             </div>
@@ -155,35 +161,35 @@ export function TransactionsPage() {
               <table className="w-full text-sm">
                 <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.06em] text-muted">
                   <tr>
-                    <th className="px-5 py-3 font-medium">Date</th>
-                    <th className="px-5 py-3 font-medium">Category</th>
-                    <th className="px-5 py-3 font-medium">Type</th>
-                    <th className="px-5 py-3 font-medium">Method</th>
-                    <th className="px-5 py-3 text-right font-medium">Amount</th>
+                    <th className="px-5 py-3 font-medium">{t("txn.colDate")}</th>
+                    <th className="px-5 py-3 font-medium">{t("txn.colCategory")}</th>
+                    <th className="px-5 py-3 font-medium">{t("txn.colType")}</th>
+                    <th className="px-5 py-3 font-medium">{t("txn.colMethod")}</th>
+                    <th className="px-5 py-3 text-right font-medium">{t("txn.colAmount")}</th>
                     <th className="px-5 py-3 text-right font-medium">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t("txn.actions")}</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {items.map((t) => {
-                    const locked = isLocked(t);
+                  {items.map((txn) => {
+                    const locked = isLocked(txn);
                     return (
                       <tr
-                        key={t.id}
+                        key={txn.id}
                         className="cursor-pointer transition-colors hover:bg-black/[0.015]"
-                        onClick={() => setViewing(t)}
+                        onClick={() => setViewing(txn)}
                       >
                         <td className="nums px-5 py-3.5 text-charcoal">
-                          {format(new Date(t.occurred_on), "dd MMM yyyy")}
+                          {format(new Date(txn.occurred_on), "dd MMM yyyy")}
                         </td>
-                        <td className="px-5 py-3.5 font-medium text-ink">{catName(t.category_id)}</td>
+                        <td className="px-5 py-3.5 font-medium text-ink">{catName(txn.category_id)}</td>
                         <td className="px-5 py-3.5">
-                          <Badge tone={t.type === "income" ? "green" : "red"}>{t.type}</Badge>
+                          <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
                         </td>
-                        <td className="px-5 py-3.5 capitalize text-charcoal">{t.method}</td>
-                        <td className={`nums px-5 py-3.5 text-right font-medium ${amountClass(t.type)}`}>
-                          {amountText(t)}
+                        <td className="px-5 py-3.5 text-charcoal">{t(`method.${txn.method}`)}</td>
+                        <td className={`nums px-5 py-3.5 text-right font-medium ${amountClass(txn.type)}`}>
+                          {amountText(txn)}
                         </td>
                         <td className="px-5 py-3.5">
                           {!locked && (
@@ -192,10 +198,10 @@ export function TransactionsPage() {
                                 variant="ghost"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openEdit(t);
+                                  openEdit(txn);
                                 }}
-                                title="Edit"
-                                aria-label="Edit transaction"
+                                title={t("common.edit")}
+                                aria-label={t("txn.editAria")}
                                 className="size-9 px-0"
                               >
                                 <IconPencil size={16} />
@@ -204,10 +210,10 @@ export function TransactionsPage() {
                                 variant="danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  del.mutate(t.id);
+                                  del.mutate(txn.id);
                                 }}
-                                title="Delete"
-                                aria-label="Delete transaction"
+                                title={t("common.delete")}
+                                aria-label={t("txn.deleteAria")}
                                 className="size-9 px-0"
                               >
                                 <IconTrash size={16} />
@@ -225,7 +231,11 @@ export function TransactionsPage() {
             {total > PAGE_SIZE && (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
                 <span className="nums text-xs text-muted">
-                  {(page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, total)} of {total}
+                  {t("txn.rangeOf", {
+                    start: (page - 1) * PAGE_SIZE + 1,
+                    end: Math.min(page * PAGE_SIZE, total),
+                    total,
+                  })}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -234,10 +244,10 @@ export function TransactionsPage() {
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     className="h-9 px-3"
                   >
-                    Prev
+                    {t("common.prev")}
                   </Button>
                   <span className="nums text-xs text-muted">
-                    Page {page} / {totalPages}
+                    {t("txn.pageOf", { page, pages: totalPages })}
                   </span>
                   <Button
                     variant="secondary"
@@ -245,7 +255,7 @@ export function TransactionsPage() {
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     className="h-9 px-3"
                   >
-                    Next
+                    {t("common.next")}
                   </Button>
                 </div>
               </div>
@@ -261,23 +271,23 @@ export function TransactionsPage() {
         defaultType={newType}
       />
 
-      <Modal open={Boolean(viewing)} onClose={() => setViewing(null)} title="Transaction details">
+      <Modal open={Boolean(viewing)} onClose={() => setViewing(null)} title={t("txn.details")}>
         {viewing && (
           <div className="space-y-1">
-            <DetailRow label="Date" value={format(new Date(viewing.occurred_on), "dd MMM yyyy")} />
-            <DetailRow label="Category" value={catName(viewing.category_id)} />
+            <DetailRow label={t("txn.detailDate")} value={format(new Date(viewing.occurred_on), "dd MMM yyyy")} />
+            <DetailRow label={t("txn.detailCategory")} value={catName(viewing.category_id)} />
             <DetailRow
-              label="Type"
-              value={<Badge tone={viewing.type === "income" ? "green" : "red"}>{viewing.type}</Badge>}
+              label={t("txn.detailType")}
+              value={<Badge tone={viewing.type === "income" ? "green" : "red"}>{t(`type.${viewing.type}`)}</Badge>}
             />
-            <DetailRow label="Method" value={<span className="capitalize">{viewing.method}</span>} />
+            <DetailRow label={t("txn.detailMethod")} value={t(`method.${viewing.method}`)} />
             <DetailRow
-              label="Amount"
+              label={t("txn.detailAmount")}
               value={<span className={`nums font-medium ${amountClass(viewing.type)}`}>{amountText(viewing)}</span>}
             />
-            <DetailRow label="Note" value={viewing.note?.trim() ? viewing.note : "—"} />
+            <DetailRow label={t("txn.detailNote")} value={viewing.note?.trim() ? viewing.note : "—"} />
             <DetailRow
-              label="Recorded"
+              label={t("txn.detailRecorded")}
               value={<span className="nums">{format(new Date(viewing.created_at), "dd MMM yyyy, HH:mm")}</span>}
             />
             <div className="flex justify-end gap-2 pt-4">
@@ -285,15 +295,15 @@ export function TransactionsPage() {
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    const t = viewing;
+                    const target = viewing;
                     setViewing(null);
-                    openEdit(t);
+                    openEdit(target);
                   }}
                 >
-                  <IconPencil size={16} /> Edit
+                  <IconPencil size={16} /> {t("common.edit")}
                 </Button>
               )}
-              <Button onClick={() => setViewing(null)}>Close</Button>
+              <Button onClick={() => setViewing(null)}>{t("common.close")}</Button>
             </div>
           </div>
         )}
@@ -328,7 +338,7 @@ function TransactionSkeleton() {
 }
 
 function TransactionMobileCard({
-  transaction: t,
+  transaction: txn,
   category,
   locked,
   onView,
@@ -342,19 +352,20 @@ function TransactionMobileCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   return (
     <article className="cursor-pointer p-4" onClick={onView}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">{category}</p>
-          <p className="nums mt-1 text-xs text-muted">{format(new Date(t.occurred_on), "dd MMM yyyy")}</p>
+          <p className="nums mt-1 text-xs text-muted">{format(new Date(txn.occurred_on), "dd MMM yyyy")}</p>
         </div>
-        <p className={`nums shrink-0 text-sm font-medium ${amountClass(t.type)}`}>{amountText(t)}</p>
+        <p className={`nums shrink-0 text-sm font-medium ${amountClass(txn.type)}`}>{amountText(txn)}</p>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Badge tone={t.type === "income" ? "green" : "red"}>{t.type}</Badge>
-          <span className="text-xs capitalize text-muted">{t.method}</span>
+          <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
+          <span className="text-xs text-muted">{t(`method.${txn.method}`)}</span>
         </div>
         {!locked && (
           <div className="flex gap-1">
@@ -364,9 +375,9 @@ function TransactionMobileCard({
                 e.stopPropagation();
                 onEdit();
               }}
-              title="Edit"
+              title={t("common.edit")}
               className="size-9 px-0"
-              aria-label="Edit transaction"
+              aria-label={t("txn.editAria")}
             >
               <IconPencil size={16} />
             </Button>
@@ -376,9 +387,9 @@ function TransactionMobileCard({
                 e.stopPropagation();
                 onDelete();
               }}
-              title="Delete"
+              title={t("common.delete")}
               className="size-9 px-0"
-              aria-label="Delete transaction"
+              aria-label={t("txn.deleteAria")}
             >
               <IconTrash size={16} />
             </Button>
@@ -390,17 +401,18 @@ function TransactionMobileCard({
 }
 
 function EmptyTransactions({ onAdd }: { onAdd: () => void }) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
       <span className="grid size-11 place-items-center rounded-lg border border-line text-muted">
         <IconFlow size={20} />
       </span>
       <div>
-        <p className="font-medium text-ink">Nothing recorded yet</p>
-        <p className="max-w-xs text-sm text-muted">Add your first expense or income to start the ledger.</p>
+        <p className="font-medium text-ink">{t("txn.emptyTitle")}</p>
+        <p className="max-w-xs text-sm text-muted">{t("txn.emptyBody")}</p>
       </div>
       <Button onClick={onAdd}>
-        <IconPlus size={16} /> Add expense
+        <IconPlus size={16} /> {t("txn.addExpense")}
       </Button>
     </div>
   );

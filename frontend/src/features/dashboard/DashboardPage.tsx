@@ -37,6 +37,8 @@ import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import { PeriodSelector, rangeFor } from "../../components/ui/period-selector";
 import { Skeleton } from "../../components/ui/skeleton";
+import { useCategoryLabel, useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import { cn, vnd } from "../../lib/utils";
 import { BudgetPulse } from "../budgets/BudgetPulse";
 import { useCategories } from "../categories/hooks";
@@ -53,7 +55,15 @@ const tooltipStyle = {
 } as const;
 
 const axisTick = { fontSize: 11, fill: "#787774" } as const;
-const weekLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const WEEKDAY_KEYS: TKey[] = [
+  "dash.weekday.mon",
+  "dash.weekday.tue",
+  "dash.weekday.wed",
+  "dash.weekday.thu",
+  "dash.weekday.fri",
+  "dash.weekday.sat",
+  "dash.weekday.sun",
+];
 const categoryPalette = ["#b94d47", "#d97941", "#e4b54d", "#6b97d8", "#8f64c8", "#64b7b1"];
 
 type ChangeTone = "good" | "bad" | "neutral";
@@ -185,6 +195,7 @@ function MetricCard({
   formatDiff?: (value: number) => string;
   loading: boolean;
 }) {
+  const t = useT();
   const toneClass = {
     green: "bg-brand-soft text-brand-dark",
     red: "bg-pastel-red text-expense",
@@ -198,7 +209,7 @@ function MetricCard({
         <div className={cn("grid size-9 place-items-center rounded-full", toneClass)}>
           <Icon size={18} strokeWidth={2} />
         </div>
-        <p className="text-xs text-muted">vs previous period</p>
+        <p className="text-xs text-muted">{t("dash.vsPrevious")}</p>
       </div>
       <div className="mt-4">
         <p className="text-sm font-semibold text-charcoal">{title}</p>
@@ -268,6 +279,8 @@ function InsightRow({
 }
 
 export function DashboardPage() {
+  const t = useT();
+  const categoryLabel = useCategoryLabel();
   const [range, setRange] = useState<{ from: string; to: string }>(() => rangeFor("this_month", "", ""));
   const prevRange = previousPeriod(range.from, range.to);
   const days = rangeDays(range.from, range.to);
@@ -290,8 +303,11 @@ export function DashboardPage() {
   });
   const { data: cats = [] } = useCategories();
 
-  const categoryNames = useMemo(() => new Map(cats.map((c) => [c.id, c.name])), [cats]);
-  const catName = (id: string) => categoryNames.get(id) ?? "Unknown category";
+  const categoryById = useMemo(() => new Map(cats.map((c) => [c.id, c])), [cats]);
+  const catName = (id: string) => {
+    const c = categoryById.get(id);
+    return c ? categoryLabel(c) : t("dash.unknownCategory");
+  };
 
   const s = cur.data;
   const p = prev.data;
@@ -314,13 +330,16 @@ export function DashboardPage() {
     prevTransactionCount > 0 ? (prevIncome + prevExpense) / prevTransactionCount : 0;
 
   const rows = spend.data ?? [];
-  const categoryChart = rows.slice(0, 6).map((r, index) => ({
-    category: r.category,
-    current: Number(r.total),
-    previous: Number(r.prev_total),
-    percent: r.percent,
-    color: r.color ?? categoryPalette[index % categoryPalette.length],
-  }));
+  const categoryChart = rows.slice(0, 6).map((r, index) => {
+    const cat = categoryById.get(r.category_id);
+    return {
+      category: cat ? categoryLabel(cat) : r.category,
+      current: Number(r.total),
+      previous: Number(r.prev_total),
+      percent: r.percent,
+      color: r.color ?? categoryPalette[index % categoryPalette.length],
+    };
+  });
   const topCategory = categoryChart[0];
 
   const flowData = (flow.data ?? []).map((t) => {
@@ -343,14 +362,14 @@ export function DashboardPage() {
   }));
 
   const weeklyData = useMemo(() => {
-    const totals = weekLabels.map((day) => ({ day, expense: 0 }));
+    const totals = WEEKDAY_KEYS.map((key) => ({ day: t(key), expense: 0 }));
     transactionItems.forEach((txn) => {
       if (txn.type !== "expense") return;
       const weekday = (parseDate(txn.occurred_on).getDay() + 6) % 7;
       totals[weekday].expense += Number(txn.amount);
     });
     return totals;
-  }, [transactionItems]);
+  }, [transactionItems, t]);
 
   const topDays = useMemo(() => {
     const totals = new Map<string, number>();
@@ -375,34 +394,33 @@ export function DashboardPage() {
   const insights = [
     {
       icon: balance >= 0 ? TrendingUp : TrendingDown,
-      title: balance >= 0 ? "Cash flow is positive" : "Cash flow needs attention",
-      body:
-        balance >= 0
-          ? "You earned more than you spent in this period."
-          : "Expenses are higher than income in this period.",
+      title: balance >= 0 ? t("dash.insight.positiveTitle") : t("dash.insight.negativeTitle"),
+      body: balance >= 0 ? t("dash.insight.positiveBody") : t("dash.insight.negativeBody"),
       tone: balance >= 0 ? "green" : "red",
     },
     {
       icon: ShoppingCart,
-      title: topCategory ? `${topCategory.category} is the top spending category` : "No spending category yet",
+      title: topCategory
+        ? t("dash.insight.topCategoryTitle", { category: topCategory.category })
+        : t("dash.insight.noTopCategoryTitle"),
       body: topCategory
-        ? `It accounts for ${formatPercent(topCategory.percent, 0)} of recorded expenses.`
-        : "Add expenses to see which category takes the most cash.",
+        ? t("dash.insight.topCategoryBody", { percent: formatPercent(topCategory.percent, 0) })
+        : t("dash.insight.noTopCategoryBody"),
       tone: topCategory ? "yellow" : "blue",
     },
     {
       icon: expenseChange.tone === "good" ? TrendingDown : TrendingUp,
-      title: expenseChange.diff <= 0 ? "Expense decreased" : "Expense increased",
+      title: expenseChange.diff <= 0 ? t("dash.insight.expenseDownTitle") : t("dash.insight.expenseUpTitle"),
       body:
         expenseChange.pct !== null
-          ? `Expense changed by ${signedNumber(expenseChange.pct)}% compared with the previous period.`
-          : "Record more transactions to compare expenses with the previous period.",
+          ? t("dash.insight.expenseChangeBody", { pct: `${signedNumber(expenseChange.pct)}%` })
+          : t("dash.insight.expenseNoCompareBody"),
       tone: expenseChange.tone === "good" ? "green" : expenseChange.tone === "bad" ? "red" : "blue",
     },
     {
       icon: Percent,
-      title: savingsRate >= 20 ? "Savings rate is healthy" : "Savings rate is low",
-      body: `Current savings rate is ${formatPercent(savingsRate)} for this period.`,
+      title: savingsRate >= 20 ? t("dash.insight.savingsHealthyTitle") : t("dash.insight.savingsLowTitle"),
+      body: t("dash.insight.savingsBody", { rate: formatPercent(savingsRate) }),
       tone: savingsRate >= 20 ? "green" : "red",
     },
   ] satisfies {
@@ -416,10 +434,8 @@ export function DashboardPage() {
     <div className="space-y-5">
       <header className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(520px,auto)] xl:items-start">
         <div className="max-w-3xl">
-          <h1 className="display text-4xl text-ink sm:text-5xl">Know what changed before it becomes a habit.</h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-muted">
-            Track your cash flow, understand category spend, and review the transactions that changed your month.
-          </p>
+          <h1 className="display text-4xl text-ink sm:text-5xl">{t("dash.title")}</h1>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-muted">{t("dash.subtitle")}</p>
         </div>
         <div className="flex flex-col gap-2 xl:items-end">
           <PeriodSelector onChange={setRange} />
@@ -429,19 +445,19 @@ export function DashboardPage() {
               {formatRange(range.from, range.to)}
             </span>
             <span className="inline-flex h-9 items-center rounded-lg border border-line bg-surface px-3">
-              Compare: previous period
+              {t("dash.comparePrevious")}
             </span>
           </div>
         </div>
       </header>
 
-      {(cur.isError || prev.isError) && <InlineError message="Could not load dashboard summary. Please try again." />}
+      {(cur.isError || prev.isError) && <InlineError message={t("dash.summaryError")} />}
 
       <BudgetPulse from={range.from} to={range.to} />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Net Balance"
+          title={t("dash.netBalance")}
           value={vnd(balance)}
           icon={Wallet}
           tone="green"
@@ -450,7 +466,7 @@ export function DashboardPage() {
           loading={loadingSummary}
         />
         <MetricCard
-          title="Income"
+          title={t("dash.income")}
           value={vnd(income)}
           icon={ArrowDownRight}
           tone="green"
@@ -459,7 +475,7 @@ export function DashboardPage() {
           loading={loadingSummary}
         />
         <MetricCard
-          title="Expense"
+          title={t("dash.expense")}
           value={vnd(expense)}
           icon={ArrowUpRight}
           tone="red"
@@ -468,7 +484,7 @@ export function DashboardPage() {
           loading={loadingSummary}
         />
         <MetricCard
-          title="Savings Rate"
+          title={t("dash.savingsRate")}
           value={formatPercent(savingsRate)}
           icon={Percent}
           tone="blue"
@@ -482,17 +498,14 @@ export function DashboardPage() {
       <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr_0.55fr]">
         <Card className="rise p-4 sm:p-5" style={rise(1)}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-ink">Cash flow overview</h2>
-            <Badge tone="neutral">{flowGranularity === "day" ? "Daily" : "Weekly"}</Badge>
+            <h2 className="font-semibold text-ink">{t("dash.cashFlow")}</h2>
+            <Badge tone="neutral">{flowGranularity === "day" ? t("dash.daily") : t("dash.weekly")}</Badge>
           </div>
           <div className="mt-4 h-[320px]">
             {flow.isLoading ? (
               <Skeleton className="h-full" />
             ) : flowData.length === 0 ? (
-              <EmptyPanel
-                title="No cash flow yet"
-                body="Income and expense bars appear after transactions are recorded."
-              />
+              <EmptyPanel title={t("dash.noCashFlow")} body={t("dash.noCashFlowBody")} />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={flowData} margin={{ top: 12, right: 10, left: -8, bottom: 0 }} barGap={2}>
@@ -502,18 +515,18 @@ export function DashboardPage() {
                   <YAxis tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={false} width={54} />
                   <Tooltip
                     formatter={(value, name) => [
-                      name === "Expense" ? vnd(Math.abs(Number(value))) : vnd(Number(value)),
+                      name === t("dash.legend.expense") ? vnd(Math.abs(Number(value))) : vnd(Number(value)),
                       name,
                     ]}
                     contentStyle={tooltipStyle}
                   />
                   <Legend iconType="rect" wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="income" name="Income" fill="#9ac7a8" radius={[3, 3, 0, 0]} barSize={9} />
-                  <Bar dataKey="expenseBar" name="Expense" fill="#d99087" radius={[0, 0, 3, 3]} barSize={9} />
+                  <Bar dataKey="income" name={t("dash.legend.income")} fill="#9ac7a8" radius={[3, 3, 0, 0]} barSize={9} />
+                  <Bar dataKey="expenseBar" name={t("dash.legend.expense")} fill="#d99087" radius={[0, 0, 3, 3]} barSize={9} />
                   <Line
                     type="monotone"
                     dataKey="net"
-                    name="Net"
+                    name={t("dash.legend.net")}
                     stroke="#1a1a18"
                     strokeWidth={2}
                     dot={{ r: 2, fill: "#ffffff", strokeWidth: 1.5 }}
@@ -526,14 +539,14 @@ export function DashboardPage() {
 
         <Card className="rise p-4 sm:p-5" style={rise(2)}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-ink">Spending by category</h2>
-            <Badge tone={categoryChart.length ? "green" : "neutral"}>Amount</Badge>
+            <h2 className="font-semibold text-ink">{t("dash.spendingByCategory")}</h2>
+            <Badge tone={categoryChart.length ? "green" : "neutral"}>{t("dash.amount")}</Badge>
           </div>
           {spend.isLoading ? (
             <Skeleton className="mt-4 h-[320px]" />
           ) : categoryChart.length === 0 ? (
             <div className="mt-4 h-[320px]">
-              <EmptyPanel title="No spending in this period" body="Add expenses to see category ranking." />
+              <EmptyPanel title={t("dash.noSpending")} body={t("dash.noSpendingBody")} />
             </div>
           ) : (
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_126px]">
@@ -550,7 +563,7 @@ export function DashboardPage() {
                     />
                     <YAxis type="category" dataKey="category" width={108} tick={axisTick} tickLine={false} axisLine={false} />
                     <Tooltip formatter={(value) => vnd(Number(value))} contentStyle={tooltipStyle} />
-                    <Bar dataKey="current" name="Amount" radius={[0, 5, 5, 0]} barSize={13}>
+                    <Bar dataKey="current" name={t("dash.amount")} radius={[0, 5, 5, 0]} barSize={13}>
                       {categoryChart.map((entry) => (
                         <Cell key={entry.category} fill={entry.color} />
                       ))}
@@ -587,7 +600,7 @@ export function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
-                  <p className="text-xs text-muted">Top category</p>
+                  <p className="text-xs text-muted">{t("dash.topCategory")}</p>
                   <p className="mt-1 truncate text-sm font-semibold text-ink">{topCategory?.category}</p>
                   <p className="nums mt-1 text-xs text-muted">{topCategory ? vnd(topCategory.current) : "0 VND"}</p>
                 </div>
@@ -599,7 +612,7 @@ export function DashboardPage() {
         <Card className="rise p-4 sm:p-5" style={rise(3)}>
           <div className="flex items-center gap-2">
             <Activity size={18} className="text-muted" strokeWidth={2} />
-            <h2 className="font-semibold text-ink">Transaction volume</h2>
+            <h2 className="font-semibold text-ink">{t("dash.transactionVolume")}</h2>
           </div>
           {transactionsLoading ? (
             <div className="mt-5 space-y-4">
@@ -609,13 +622,13 @@ export function DashboardPage() {
           ) : (
             <>
               <p className="nums mt-5 text-4xl font-semibold leading-none text-ink">{transactionCount}</p>
-              <p className="mt-1 text-sm text-muted">Transactions</p>
+              <p className="mt-1 text-sm text-muted">{t("dash.transactions")}</p>
               <div className="mt-4">
                 <ChangeSummary change={txnCountChange} formatDiff={signedInteger} />
-                <p className="mt-1 text-xs text-muted">vs previous period</p>
+                <p className="mt-1 text-xs text-muted">{t("dash.vsPrevious")}</p>
               </div>
               <div className="mt-6 border-t border-line pt-5">
-                <p className="text-sm text-muted">Average per transaction</p>
+                <p className="text-sm text-muted">{t("dash.avgPerTransaction")}</p>
                 <p className="nums mt-2 text-xl font-semibold text-ink">{vnd(averageTransaction)}</p>
                 <div className="mt-2">
                   <ChangeSummary change={averageTxnChange} />
@@ -629,14 +642,14 @@ export function DashboardPage() {
       <section className="grid gap-4 xl:grid-cols-[1fr_0.68fr_0.74fr]">
         <Card className="rise p-4 sm:p-5" style={rise(4)}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-ink">Income vs expense trend</h2>
-            <Badge tone="neutral">Monthly</Badge>
+            <h2 className="font-semibold text-ink">{t("dash.incomeVsExpense")}</h2>
+            <Badge tone="neutral">{t("dash.monthly")}</Badge>
           </div>
           <div className="mt-4 h-64">
             {cash.isLoading ? (
               <Skeleton className="h-full" />
             ) : cashData.length === 0 ? (
-              <EmptyPanel title="No monthly trend yet" body="Monthly lines appear when transactions exist." />
+              <EmptyPanel title={t("dash.noMonthlyTrend")} body={t("dash.noMonthlyTrendBody")} />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={cashData} margin={{ top: 12, right: 12, left: -8, bottom: 0 }}>
@@ -645,9 +658,9 @@ export function DashboardPage() {
                   <YAxis tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={false} width={54} />
                   <Tooltip formatter={(value) => vnd(Number(value))} contentStyle={tooltipStyle} />
                   <Legend iconType="line" wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="income" name="Income" stroke="#5fa56b" strokeWidth={2} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="expense" name="Expense" stroke="#c56961" strokeWidth={2} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="net" name="Net" stroke="#1a1a18" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="income" name={t("dash.legend.income")} stroke="#5fa56b" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="expense" name={t("dash.legend.expense")} stroke="#c56961" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="net" name={t("dash.legend.net")} stroke="#1a1a18" strokeWidth={2} dot={{ r: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -656,14 +669,14 @@ export function DashboardPage() {
 
         <Card className="rise p-4 sm:p-5" style={rise(5)}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-ink">Weekly spending pattern</h2>
-            <Badge tone="neutral">Weekdays</Badge>
+            <h2 className="font-semibold text-ink">{t("dash.weeklyPattern")}</h2>
+            <Badge tone="neutral">{t("dash.weekdays")}</Badge>
           </div>
           <div className="mt-4 h-64">
             {transactionsLoading ? (
               <Skeleton className="h-full" />
             ) : weeklyData.every((day) => day.expense === 0) ? (
-              <EmptyPanel title="No weekday pattern yet" body="Expense bars appear after spending is recorded." />
+              <EmptyPanel title={t("dash.noWeekdayPattern")} body={t("dash.noWeekdayPatternBody")} />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData} margin={{ top: 12, right: 8, left: -8, bottom: 0 }}>
@@ -671,7 +684,7 @@ export function DashboardPage() {
                   <XAxis dataKey="day" tick={axisTick} tickLine={false} axisLine={{ stroke: "#eaeaea" }} />
                   <YAxis tick={axisTick} tickFormatter={shortVnd} tickLine={false} axisLine={false} width={48} />
                   <Tooltip formatter={(value) => vnd(Number(value))} contentStyle={tooltipStyle} />
-                  <Bar dataKey="expense" name="Expense" fill="#5fa56b" radius={[5, 5, 0, 0]} barSize={22} />
+                  <Bar dataKey="expense" name={t("dash.legend.expense")} fill="#5fa56b" radius={[5, 5, 0, 0]} barSize={22} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -680,8 +693,8 @@ export function DashboardPage() {
 
         <Card className="rise p-4 sm:p-5" style={rise(6)}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-ink">Top spending days</h2>
-            <Badge tone="neutral">By amount</Badge>
+            <h2 className="font-semibold text-ink">{t("dash.topDays")}</h2>
+            <Badge tone="neutral">{t("dash.byAmount")}</Badge>
           </div>
           {transactionsLoading ? (
             <div className="mt-5 space-y-4">
@@ -691,7 +704,7 @@ export function DashboardPage() {
             </div>
           ) : topDays.length === 0 ? (
             <div className="mt-4 h-64">
-              <EmptyPanel title="No spending days yet" body="Daily totals appear after expenses are recorded." />
+              <EmptyPanel title={t("dash.noSpendingDays")} body={t("dash.noSpendingDaysBody")} />
             </div>
           ) : (
             <div className="mt-5 space-y-4">
@@ -715,9 +728,9 @@ export function DashboardPage() {
       <section className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         <Card className="rise overflow-hidden" style={rise(7)}>
           <div className="flex items-center justify-between border-b border-line px-4 py-3.5 sm:px-5">
-            <h2 className="font-semibold text-ink">Recent activity</h2>
+            <h2 className="font-semibold text-ink">{t("dash.recentActivity")}</h2>
             <Link to="/transactions" className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline">
-              View all
+              {t("dash.viewAll")}
             </Link>
           </div>
           {transactionsLoading ? (
@@ -728,14 +741,14 @@ export function DashboardPage() {
             </div>
           ) : recentItems.length === 0 ? (
             <div className="px-5 py-10 text-center">
-              <p className="font-medium text-ink">No transactions yet</p>
-              <p className="mt-1 text-sm text-muted">Your latest entries will appear here.</p>
+              <p className="font-medium text-ink">{t("dash.noTransactions")}</p>
+              <p className="mt-1 text-sm text-muted">{t("dash.noTransactionsBody")}</p>
             </div>
           ) : (
             <ul className="divide-y divide-line">
               {recentItems.map((txn) => (
                 <li key={txn.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                  <Badge tone={txn.type === "income" ? "green" : "red"}>{txn.type}</Badge>
+                  <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{catName(txn.category_id)}</p>
                     <p className="nums truncate text-xs text-muted">
@@ -761,7 +774,7 @@ export function DashboardPage() {
         <Card className="rise p-4 sm:p-5" style={rise(8)}>
           <div className="mb-5 flex items-center gap-2">
             <BarChart3 size={18} className="text-muted" strokeWidth={2} />
-            <h2 className="font-semibold text-ink">Key insights</h2>
+            <h2 className="font-semibold text-ink">{t("dash.keyInsights")}</h2>
           </div>
           <div className="space-y-4">
             {insights.map((insight) => (

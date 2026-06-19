@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
+import { useT } from "../../lib/i18n";
 import { IconChevronDown, IconPlus } from "../icons";
 
 interface Option {
@@ -13,7 +14,7 @@ export function CategoryCombobox({
   value,
   onChange,
   onCreate,
-  placeholder = "Type to search or create...",
+  placeholder,
 }: {
   options: Option[];
   value: string;
@@ -21,6 +22,7 @@ export function CategoryCombobox({
   onCreate: (name: string) => Promise<{ id: string } | undefined>;
   placeholder?: string;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -60,7 +62,7 @@ export function CategoryCombobox({
     <div className="relative">
       <input
         value={query}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("combobox.placeholder")}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
@@ -102,11 +104,11 @@ export function CategoryCombobox({
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-dark hover:bg-brand-soft"
             >
               <IconPlus size={15} />
-              Create &ldquo;{query.trim()}&rdquo;
+              {t("combobox.create", { name: query.trim() })}
             </button>
           )}
           {filtered.length === 0 && !canCreate && (
-            <p className="px-3 py-2 text-sm text-muted">No categories</p>
+            <p className="px-3 py-2 text-sm text-muted">{t("combobox.noMatch")}</p>
           )}
         </div>
       )}

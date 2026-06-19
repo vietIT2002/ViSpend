@@ -19,7 +19,7 @@ def _q(value: Decimal) -> Decimal:
 def _month_first_day(month: str) -> date:
     year, mon = int(month[:4]), int(month[5:7])
     if not 1 <= mon <= 12:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid month")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "invalid_month")
     return date(year, mon, 1)
 
 
@@ -69,10 +69,10 @@ def _usage_percent(spent: Decimal, limit: Decimal) -> int:
 def _owned_expense_category(session: Session, user_id: uuid.UUID, category_id: uuid.UUID) -> Category:
     cat = session.get(Category, category_id)
     if cat is None or (cat.user_id is not None and cat.user_id != user_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "category_not_found")
     if cat.type != TxnType.expense:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Budgets apply to expense categories only"
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "budget_expense_only"
         )
     return cat
 
@@ -174,7 +174,7 @@ def upsert_allocation(
     others_total = sum((a.amount for a in existing if a.category_id != category_id), ZERO)
     if others_total + amount > _available_money(session, user.id, last):
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Budget cannot exceed your available money."
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "budget_exceeds_available"
         )
 
     current = next((a for a in existing if a.category_id == category_id), None)
@@ -191,10 +191,10 @@ def upsert_allocation(
 def delete_allocation(session: Session, user: User, allocation_id: uuid.UUID) -> None:
     alloc = session.get(BudgetAllocation, allocation_id)
     if alloc is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Allocation not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "allocation_not_found")
     bm = session.get(BudgetMonth, alloc.budget_month_id)
     if bm is None or bm.user_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Allocation not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "allocation_not_found")
     session.delete(alloc)
     session.commit()
 
@@ -206,7 +206,7 @@ def copy_plan(session: Session, user: User, from_month: str, to_month: str) -> B
     src_allocs = _allocations(session, src.id) if src else []
     if not src_allocs:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "There are no category budgets to copy."
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "budget_nothing_to_copy"
         )
 
     dst = _get_or_create_month(session, user.id, to_first)

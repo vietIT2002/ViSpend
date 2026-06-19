@@ -52,6 +52,7 @@ class UserOut(BaseModel):
     email: EmailStr | None
     full_name: str | None
     phone: str | None
+    language: str
     is_verified: bool
     is_google: bool
 
@@ -77,6 +78,7 @@ class ProfileUpdate(BaseModel):
     username: str | None = None
     full_name: str | None = Field(default=None, max_length=80)
     phone: str | None = Field(default=None, max_length=20)
+    language: Literal["en", "vi"] | None = None
 
     @field_validator("username")
     @classmethod
@@ -121,6 +123,7 @@ class CategoryOut(BaseModel):
     type: TxnType
     icon: str | None
     color: str | None
+    key: str | None
     is_default: bool
 
 

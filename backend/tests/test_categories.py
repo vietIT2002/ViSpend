@@ -6,6 +6,22 @@ def test_list_includes_default_categories(auth_client):
     assert any(c["name"] == "Salary" and c["is_default"] for c in data)
 
 
+def test_default_categories_expose_stable_keys(auth_client):
+    data = auth_client.get("/api/categories").json()
+    by_name = {(c["name"], c["type"]): c for c in data}
+    assert by_name[("Food & Drink", "expense")]["key"] == "food_drink"
+    assert by_name[("Salary", "income")]["key"] == "salary"
+    # The two "Other" rows are disambiguated by type.
+    assert by_name[("Other", "expense")]["key"] == "other_expense"
+    assert by_name[("Other", "income")]["key"] == "other_income"
+
+
+def test_custom_category_has_no_key(auth_client):
+    r = auth_client.post("/api/categories", json={"name": "Coffee", "type": "expense"})
+    assert r.status_code == 201
+    assert r.json()["key"] is None
+
+
 def test_create_update_delete_custom_category(auth_client):
     r = auth_client.post(
         "/api/categories",

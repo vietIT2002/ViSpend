@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
+import { useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import { Input } from "./input";
 import { Select } from "./select";
 
 export type PeriodKey = "this_month" | "last_month" | "3m" | "6m" | "custom";
 
-const PRESETS: { key: PeriodKey; label: string }[] = [
-  { key: "this_month", label: "This month" },
-  { key: "last_month", label: "Last month" },
-  { key: "3m", label: "3 months" },
-  { key: "6m", label: "6 months" },
-  { key: "custom", label: "Custom" },
+const PRESETS: { key: PeriodKey; label: TKey }[] = [
+  { key: "this_month", label: "period.this_month" },
+  { key: "last_month", label: "period.last_month" },
+  { key: "3m", label: "period.3m" },
+  { key: "6m", label: "period.6m" },
+  { key: "custom", label: "period.custom" },
 ];
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -41,6 +43,7 @@ export function PeriodSelector({
 }: {
   onChange: (range: { from: string; to: string }) => void;
 }) {
+  const t = useT();
   const [key, setKey] = useState<PeriodKey>("this_month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -56,10 +59,10 @@ export function PeriodSelector({
   return (
     <div className="w-full max-w-full sm:w-auto">
       <div className="sm:hidden">
-        <Select value={key} onChange={(e) => setKey(e.target.value as PeriodKey)} aria-label="Period">
+        <Select value={key} onChange={(e) => setKey(e.target.value as PeriodKey)} aria-label={t("period.label")}>
           {PRESETS.map((p) => (
             <option key={p.key} value={p.key}>
-              {p.label}
+              {t(p.label)}
             </option>
           ))}
         </Select>
@@ -76,7 +79,7 @@ export function PeriodSelector({
               key === p.key ? "bg-brand text-white" : "text-muted hover:bg-black/[0.035] hover:text-ink",
             )}
           >
-            {p.label}
+            {t(p.label)}
           </button>
         ))}
       </div>
@@ -93,16 +96,16 @@ export function PeriodSelector({
             <Input
               type="date"
               className="nums h-9"
-              aria-label="From"
+              aria-label={t("period.from")}
               tabIndex={showCustom ? 0 : -1}
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
             />
-            <span className="text-sm text-muted">to</span>
+            <span className="text-sm text-muted">{t("period.to")}</span>
             <Input
               type="date"
               className="nums h-9"
-              aria-label="To"
+              aria-label={t("period.to")}
               tabIndex={showCustom ? 0 : -1}
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}

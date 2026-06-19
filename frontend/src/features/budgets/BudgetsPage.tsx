@@ -6,7 +6,8 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
-import { ApiError } from "../../lib/api";
+import { useCategoryLabel, useErrorText, useLocale, useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import { cn, vnd } from "../../lib/utils";
 import type { BudgetAlert, BudgetAllocationStatus } from "../../types";
 import { useCategories } from "../categories/hooks";
@@ -23,11 +24,11 @@ const ALERT_TONE: Record<BudgetAlert, "green" | "yellow" | "red"> = {
   tight: "red",
   over: "red",
 };
-const ALERT_LABEL: Record<BudgetAlert, string> = {
-  safe: "Safe",
-  watch: "Watch",
-  tight: "Tight",
-  over: "Over",
+const ALERT_LABEL: Record<BudgetAlert, `budgets.alert.${BudgetAlert}`> = {
+  safe: "budgets.alert.safe",
+  watch: "budgets.alert.watch",
+  tight: "budgets.alert.tight",
+  over: "budgets.alert.over",
 };
 const BAR_COLOR: Record<BudgetAlert, string> = {
   safe: "bg-brand",
@@ -47,9 +48,9 @@ function ProgressBar({ percent, alert }: { percent: number; alert: BudgetAlert }
   );
 }
 
-function monthRange(month: string) {
+function monthRange(month: string, locale: string) {
   const [y, m] = month.split("-").map(Number);
-  const short = new Date(y, m - 1, 1).toLocaleString("en-US", { month: "short" });
+  const short = new Date(y, m - 1, 1).toLocaleString(locale, { month: "short" });
   const last = new Date(y, m, 0).getDate();
   return `${short} 1 – ${short} ${last}`;
 }
@@ -74,19 +75,19 @@ function shiftMonth(month: string, delta: number) {
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-function monthName(month: string) {
+function monthName(month: string, locale: string) {
   const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long" });
+  return new Date(y, m - 1, 1).toLocaleString(locale, { month: "long" });
 }
-function monthLabel(month: string) {
+function monthLabel(month: string, locale: string) {
   const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
+  return new Date(y, m - 1, 1).toLocaleString(locale, { month: "long", year: "numeric" });
 }
-const errText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 
-function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: string }) {
+function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; month: string; label: string }) {
   const upsert = useUpsertBudgetAllocation();
   const del = useDeleteBudgetAllocation();
+  const t = useT();
   const [amount, setAmount] = useState(item.amount);
 
   function save() {
@@ -107,11 +108,11 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
       <div className="grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(120px,1fr)_116px_96px_96px_56px_92px]">
       <div className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1">
         <span className="h-9 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color ?? "#cbd5d1" }} />
-        <p className="truncate font-medium text-ink">{item.category}</p>
+        <p className="truncate font-medium text-ink">{label}</p>
       </div>
       <div>
         <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-[0.06em] text-muted sm:hidden">
-          Budget
+          {t("budgets.budgetLabel")}
         </span>
         <Input
           type="number"
@@ -125,13 +126,13 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
       </div>
       <div className="text-right sm:text-left">
         <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-[0.06em] text-muted sm:hidden">
-          Spent
+          {t("budgets.spent")}
         </span>
         <span className="nums text-sm font-medium text-ink">{vnd(item.spent)}</span>
       </div>
       <div className="text-right sm:text-left">
         <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-[0.06em] text-muted sm:hidden">
-          Left
+          {t("budgets.left")}
         </span>
         <span className={cn("nums text-sm font-medium", remaining < 0 ? "text-expense" : "text-ink")}>
           {vnd(item.remaining)}
@@ -139,11 +140,11 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
       </div>
       <span className="nums hidden text-sm text-muted sm:inline">{item.usage_percent}%</span>
       <div className="col-span-2 flex items-center justify-between gap-2 sm:col-span-1 sm:justify-end">
-        <Badge tone={ALERT_TONE[item.alert]}>{ALERT_LABEL[item.alert]}</Badge>
+        <Badge tone={ALERT_TONE[item.alert]}>{t(ALERT_LABEL[item.alert])}</Badge>
         <Button
           variant="danger"
           className="size-8 px-0"
-          aria-label="Remove budget"
+          aria-label={t("budgets.removeAria")}
           disabled={del.isPending}
           onClick={() => del.mutate(item.id)}
         >
@@ -160,6 +161,8 @@ function AllocationRow({ item, month }: { item: BudgetAllocationStatus; month: s
 
 function AddAllocation({ month, options }: { month: string; options: { id: string; name: string }[] }) {
   const upsert = useUpsertBudgetAllocation();
+  const t = useT();
+  const errText = useErrorText();
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
 
@@ -179,8 +182,8 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
   return (
     <div className="border-b border-line bg-canvas px-4 py-3.5 sm:px-5">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]">
-        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Category">
-          <option value="">Choose expense category…</option>
+        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label={t("txn.colCategory")}>
+          <option value="">{t("budgets.chooseCategory")}</option>
           {options.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -191,12 +194,12 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
           type="number"
           inputMode="numeric"
           className="nums"
-          placeholder="Budget amount"
+          placeholder={t("budgets.budgetAmount")}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
         <Button onClick={add} disabled={!categoryId || !amount || upsert.isPending}>
-          <Plus size={16} /> Add
+          <Plus size={16} /> {t("common.add")}
         </Button>
       </div>
       {upsert.isError && <p className="mt-2 text-xs text-expense">{errText(upsert.error)}</p>}
@@ -205,6 +208,9 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
 }
 
 export function BudgetsPage() {
+  const t = useT();
+  const locale = useLocale();
+  const categoryLabel = useCategoryLabel();
   const [month, setMonth] = useState(thisMonth());
   const { data: plan, isLoading } = useBudgetPlan(month);
   const { data: cats = [] } = useCategories();
@@ -215,9 +221,16 @@ export function BudgetsPage() {
   const items = plan?.items ?? [];
   const allocatedIds = useMemo(() => new Set(items.map((i) => i.category_id)), [items]);
   const expenseOptions = useMemo(
-    () => cats.filter((c) => c.type === "expense" && !allocatedIds.has(c.id)).map((c) => ({ id: c.id, name: c.name })),
-    [cats, allocatedIds],
+    () =>
+      cats
+        .filter((c) => c.type === "expense" && !allocatedIds.has(c.id))
+        .map((c) => ({ id: c.id, name: categoryLabel(c) })),
+    [cats, allocatedIds, categoryLabel],
   );
+  const labelFor = (categoryId: string, fallback: string) => {
+    const cat = cats.find((c) => c.id === categoryId);
+    return cat ? categoryLabel(cat) : fallback;
+  };
   const risks = items.filter((i) => i.alert !== "safe").slice(0, 3);
   const cd = monthCountdown(month);
   const totalRemaining = Number(plan?.total_remaining ?? 0);
@@ -227,20 +240,18 @@ export function BudgetsPage() {
     <div className="space-y-5">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Budgets</p>
-          <h1 className="display text-3xl text-ink sm:text-4xl">Set a budget for each category.</h1>
-          <p className="text-sm text-muted">
-            Give Food, Transport, Shopping and more their own monthly limit. Spending is pulled from your transactions.
-          </p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("budgets.heading")}</p>
+          <h1 className="display text-3xl text-ink sm:text-4xl">{t("budgets.title")}</h1>
+          <p className="text-sm text-muted">{t("budgets.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" className="size-10 px-0" aria-label="Previous month" onClick={() => setMonth((m) => shiftMonth(m, -1))}>
+          <Button variant="secondary" className="size-10 px-0" aria-label={t("budgets.prevMonth")} onClick={() => setMonth((m) => shiftMonth(m, -1))}>
             <ChevronLeft size={16} />
           </Button>
           <span className="nums inline-flex h-10 items-center rounded-md border border-line bg-surface px-3 text-sm font-medium">
-            {monthLabel(month)}
+            {monthLabel(month, locale)}
           </span>
-          <Button variant="secondary" className="size-10 px-0" aria-label="Next month" onClick={() => setMonth((m) => shiftMonth(m, 1))}>
+          <Button variant="secondary" className="size-10 px-0" aria-label={t("budgets.nextMonth")} onClick={() => setMonth((m) => shiftMonth(m, 1))}>
             <ChevronRight size={16} />
           </Button>
           <Button
@@ -248,7 +259,7 @@ export function BudgetsPage() {
             disabled={copyPlan.isPending}
             onClick={() => copyPlan.mutate({ from_month: shiftMonth(month, -1), to_month: month })}
           >
-            <Copy size={15} /> Copy last month
+            <Copy size={15} /> {t("budgets.copyLastMonth")}
           </Button>
         </div>
       </header>
@@ -258,23 +269,25 @@ export function BudgetsPage() {
         <div className="grid gap-4">
           <Card className="rise space-y-3 p-5">
             <div className="flex items-baseline justify-between gap-2">
-              <h2 className="font-medium text-ink">This month</h2>
-              <span className="nums text-xs text-muted">{monthRange(month)}</span>
+              <h2 className="font-medium text-ink">{t("budgets.thisMonth")}</h2>
+              <span className="nums text-xs text-muted">{monthRange(month, locale)}</span>
             </div>
             {cd.state === "current" && (
               <p className="text-sm">
                 <span className="nums font-semibold text-ink">{cd.daysLeft}</span>{" "}
-                <span className="text-muted">day{cd.daysLeft !== 1 ? "s" : ""} left this month</span>
+                <span className="text-muted">
+                  {t(cd.daysLeft !== 1 ? "budgets.daysLeftOther" : "budgets.daysLeftOne")}
+                </span>
               </p>
             )}
             <dl className="space-y-2 border-t border-line pt-3">
-              {[
-                ["Total budget", vnd(plan?.monthly_budget ?? 0)],
-                ["Spent", vnd(plan?.total_spent ?? 0)],
-                ["Left", vnd(plan?.total_remaining ?? 0)],
-              ].map(([label, value]) => (
+              {([
+                ["budgets.totalBudget", vnd(plan?.monthly_budget ?? 0)],
+                ["budgets.spent", vnd(plan?.total_spent ?? 0)],
+                ["budgets.left", vnd(plan?.total_remaining ?? 0)],
+              ] as [TKey, string][]).map(([label, value]) => (
                 <div key={label} className="flex items-baseline justify-between gap-3">
-                  <dt className="text-sm text-muted">{label}</dt>
+                  <dt className="text-sm text-muted">{t(label)}</dt>
                   <dd className="nums text-sm font-semibold text-ink">{value}</dd>
                 </div>
               ))}
@@ -282,14 +295,16 @@ export function BudgetsPage() {
             {monthlyBudget > 0 && (
               <div className="space-y-1.5 border-t border-line pt-3">
                 <div className="flex items-center justify-between text-xs text-muted">
-                  <span>Spent of budget</span>
+                  <span>{t("budgets.spentOfBudget")}</span>
                   <span className="nums">{plan?.total_usage_percent ?? 0}%</span>
                 </div>
                 <ProgressBar percent={plan?.total_usage_percent ?? 0} alert={plan?.total_alert ?? "safe"} />
                 {cd.state === "current" && cd.daysLeft > 0 && totalRemaining > 0 && (
                   <p className="text-xs text-muted">
-                    ≈ <span className="nums">{vnd(dailyPace)}</span> / day for the remaining {cd.daysLeft} day
-                    {cd.daysLeft !== 1 ? "s" : ""}
+                    {t(cd.daysLeft !== 1 ? "budgets.dailyPaceOther" : "budgets.dailyPaceOne", {
+                      amount: vnd(dailyPace),
+                      days: cd.daysLeft,
+                    })}
                   </p>
                 )}
               </div>
@@ -297,11 +312,10 @@ export function BudgetsPage() {
           </Card>
 
           <Card className="rise space-y-2 p-5" style={{ "--i": 1 } as React.CSSProperties}>
-            <h2 className="font-medium text-ink">Available money</h2>
+            <h2 className="font-medium text-ink">{t("budgets.availableMoney")}</h2>
             <p className="nums text-xl font-semibold text-ink">{vnd(available)}</p>
             <p className="text-xs text-muted">
-              Income minus expenses through the end of {monthName(month)}. Your total category
-              budgets can&apos;t exceed this.
+              {t("budgets.availableHint", { month: monthName(month, locale) })}
             </p>
           </Card>
         </div>
@@ -310,24 +324,26 @@ export function BudgetsPage() {
         <Card className="rise overflow-hidden" style={{ "--i": 1 } as React.CSSProperties}>
           <div className="flex items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
             <div>
-              <h2 className="font-medium text-ink">Category budgets</h2>
-              <p className="text-xs text-muted">Set each limit. Spent and remaining update from transactions.</p>
+              <h2 className="font-medium text-ink">{t("budgets.categoryBudgets")}</h2>
+              <p className="text-xs text-muted">{t("budgets.categoryBudgetsHint")}</p>
             </div>
-            {monthlyBudget > 0 && <Badge tone="blue">{vnd(plan?.monthly_budget ?? 0)} total</Badge>}
+            {monthlyBudget > 0 && (
+              <Badge tone="blue">{t("budgets.total", { amount: vnd(plan?.monthly_budget ?? 0) })}</Badge>
+            )}
           </div>
 
           {isLoading ? (
-            <p className="px-5 py-10 text-center text-sm text-muted">Loading…</p>
+            <p className="px-5 py-10 text-center text-sm text-muted">{t("common.loading")}</p>
           ) : (
             <>
               {expenseOptions.length > 0 && <AddAllocation month={month} options={expenseOptions} />}
               {items.length === 0 && (
                 <p className="px-5 py-8 text-center text-sm text-muted">
-                  No category budgets yet. Add one above to start planning {monthName(month)}.
+                  {t("budgets.noBudgetsYet", { month: monthName(month, locale) })}
                 </p>
               )}
               {items.map((item) => (
-                <AllocationRow key={item.id} item={item} month={month} />
+                <AllocationRow key={item.id} item={item} month={month} label={labelFor(item.category_id, item.category)} />
               ))}
             </>
           )}
@@ -336,17 +352,19 @@ export function BudgetsPage() {
         {/* Preview rail */}
         <Card className="rise space-y-4 p-5 xl:sticky xl:top-24" style={{ "--i": 2 } as React.CSSProperties}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-medium text-ink">Dashboard preview</h2>
-            <Badge tone="blue">Preview</Badge>
+            <h2 className="font-medium text-ink">{t("budgets.dashboardPreview")}</h2>
+            <Badge tone="blue">{t("budgets.preview")}</Badge>
           </div>
           {monthlyBudget > 0 ? (
             <p className="text-lg leading-relaxed text-ink">
-              <span className="font-semibold text-brand-dark">{monthName(month)} budget</span> is{" "}
-              <span className="nums">{vnd(plan?.monthly_budget ?? 0)}</span>. You have{" "}
-              <span className="nums">{vnd(plan?.total_remaining ?? 0)}</span> left this month.
+              {t("budgets.previewSentence", {
+                month: monthName(month, locale),
+                budget: vnd(plan?.monthly_budget ?? 0),
+                remaining: vnd(plan?.total_remaining ?? 0),
+              })}
             </p>
           ) : (
-            <p className="text-sm text-muted">Add category budgets to see the dashboard summary.</p>
+            <p className="text-sm text-muted">{t("budgets.addPreviewHint")}</p>
           )}
           {risks.length > 0 && (
             <ul className="divide-y divide-line border-t border-line">
@@ -355,12 +373,14 @@ export function BudgetsPage() {
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{r.category}</p>
+                      <p className="truncate text-sm font-medium text-ink">{labelFor(r.category_id, r.category)}</p>
                       <p className="nums text-xs text-muted">
-                        {remaining < 0 ? `${vnd(Math.abs(remaining))} over limit` : `${vnd(r.remaining)} left`}
+                        {remaining < 0
+                          ? t("budgets.overLimit", { amount: vnd(Math.abs(remaining)) })
+                          : t("budgets.amountLeft", { amount: vnd(r.remaining) })}
                       </p>
                     </div>
-                    <Badge tone={ALERT_TONE[r.alert]}>{ALERT_LABEL[r.alert]}</Badge>
+                    <Badge tone={ALERT_TONE[r.alert]}>{t(ALERT_LABEL[r.alert])}</Badge>
                   </li>
                 );
               })}

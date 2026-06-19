@@ -38,7 +38,7 @@ def register(
 ) -> User:
     exists = session.exec(select(User).where(User.username == body.username)).first()
     if exists:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+        raise HTTPException(status.HTTP_409_CONFLICT, "username_taken")
     user = User(username=body.username, hashed_password=hash_password(body.password))
     session.add(user)
     session.commit()
@@ -55,7 +55,7 @@ def login(
 ) -> TokenOut:
     user = session.exec(select(User).where(User.username == form.username)).first()
     if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_credentials")
     return TokenOut(access_token=create_access_token(subject=str(user.id)))
 
 
@@ -71,13 +71,13 @@ def google_login(
     except RuntimeError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google token") from exc
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_google_token") from exc
 
     google_sub = idinfo.get("sub")
     email = idinfo.get("email")
     email_verified = bool(idinfo.get("email_verified"))
     if not google_sub or not email or not email_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Google email is not verified")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "google_email_unverified")
 
     user = session.exec(select(User).where(User.google_sub == google_sub)).first()
     if user is None:
@@ -90,7 +90,7 @@ def google_login(
                 is_verified=True,
             )
         elif user.google_sub and user.google_sub != google_sub:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Email is linked to another Google account")
+            raise HTTPException(status.HTTP_409_CONFLICT, "google_email_linked")
         else:
             user.google_sub = google_sub
             user.is_verified = True
@@ -118,12 +118,14 @@ def update_me(
             select(User).where(User.username == data["username"], User.id != current.id)
         ).first()
         if clash:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+            raise HTTPException(status.HTTP_409_CONFLICT, "username_taken")
         current.username = data["username"]
     if "full_name" in data:
         current.full_name = data["full_name"] or None
     if "phone" in data:
         current.phone = data["phone"] or None
+    if data.get("language") is not None:
+        current.language = data["language"]
     session.add(current)
     session.commit()
     session.refresh(current)
@@ -137,7 +139,7 @@ def change_password(
     current: User = Depends(get_current_user),
 ) -> dict:
     if not verify_password(body.current_password, current.hashed_password):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "current_password_incorrect")
     current.hashed_password = hash_password(body.new_password)
     session.add(current)
     session.commit()
@@ -164,10 +166,10 @@ def reset_password(
 ) -> dict:
     payload = decode_access_token(body.token)
     if not payload or payload.get("type") != "reset":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid token")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid_reset_token")
     user = session.get(User, uuid.UUID(payload["sub"]))
     if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user_not_found")
     user.hashed_password = hash_password(body.new_password)
     session.add(user)
     session.commit()

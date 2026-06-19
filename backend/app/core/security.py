@@ -54,8 +54,8 @@ def get_current_user(
 ) -> User:
     payload = decode_access_token(token)
     if payload is None or "sub" not in payload:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_token")
     user = session.get(User, uuid.UUID(payload["sub"]))
     if user is None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User does not exist")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "user_not_found")
     return user

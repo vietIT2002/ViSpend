@@ -5,13 +5,17 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { LanguageToggle } from "../../components/ui/language-toggle";
 import { IconSpendMark } from "../../components/icons";
-import { api, ApiError } from "../../lib/api";
+import { api } from "../../lib/api";
+import { useErrorText, useT } from "../../lib/i18n";
 
 type Step = "request" | "reset" | "done";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const t = useT();
+  const errText = useErrorText();
   const [step, setStep] = useState<Step>("request");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -33,10 +37,10 @@ export function ForgotPasswordPage() {
         setToken(res.reset_token);
         setStep("reset");
       } else {
-        setError("If that email exists, a reset link has been sent.");
+        setError(t("forgot.emailSent"));
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not start password reset.");
+      setError(errText(e, "forgot.couldNotStart"));
     } finally {
       setBusy(false);
     }
@@ -45,7 +49,7 @@ export function ForgotPasswordPage() {
   async function submitReset() {
     setError(null);
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("forgot.passwordTooShort"));
       return;
     }
     setBusy(true);
@@ -53,7 +57,7 @@ export function ForgotPasswordPage() {
       await api.post("/auth/reset-password", { token, new_password: password });
       setStep("done");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not reset password.");
+      setError(errText(e, "forgot.couldNotReset"));
     } finally {
       setBusy(false);
     }
@@ -62,15 +66,18 @@ export function ForgotPasswordPage() {
   return (
     <main className="grid min-h-[100dvh] place-items-center bg-canvas px-4">
       <div className="w-full max-w-sm rise">
+        <div className="mb-3 flex justify-end">
+          <LanguageToggle />
+        </div>
         <div className="mb-8 text-center">
           <span className="mx-auto mb-4 grid size-11 place-items-center rounded-lg bg-brand text-white">
             <IconSpendMark size={23} />
           </span>
-          <h1 className="display text-3xl text-ink">Reset password</h1>
+          <h1 className="display text-3xl text-ink">{t("forgot.title")}</h1>
           <p className="mt-1 text-sm text-muted">
-            {step === "request" && "Enter your email to start."}
-            {step === "reset" && "Choose a new password."}
-            {step === "done" && "You're all set."}
+            {step === "request" && t("forgot.requestHint")}
+            {step === "reset" && t("forgot.resetHint")}
+            {step === "done" && t("forgot.doneHint")}
           </p>
         </div>
 
@@ -78,7 +85,7 @@ export function ForgotPasswordPage() {
           {step === "request" && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("forgot.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -89,7 +96,7 @@ export function ForgotPasswordPage() {
                 />
               </div>
               <Button className="w-full" disabled={busy || !email} onClick={requestReset}>
-                {busy ? "Please wait..." : "Continue"}
+                {busy ? t("common.pleaseWait") : t("common.continue")}
               </Button>
             </div>
           )}
@@ -97,7 +104,7 @@ export function ForgotPasswordPage() {
           {step === "reset" && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="new-password">New password</Label>
+                <Label htmlFor="new-password">{t("forgot.newPassword")}</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -108,18 +115,16 @@ export function ForgotPasswordPage() {
                 />
               </div>
               <Button className="w-full" disabled={busy} onClick={submitReset}>
-                {busy ? "Saving..." : "Set new password"}
+                {busy ? t("common.saving") : t("forgot.setNewPassword")}
               </Button>
             </div>
           )}
 
           {step === "done" && (
             <div className="space-y-4 text-center">
-              <p className="text-sm text-charcoal">
-                Your password has been updated. You can sign in now.
-              </p>
+              <p className="text-sm text-charcoal">{t("forgot.doneMessage")}</p>
               <Button className="w-full" onClick={() => navigate("/login")}>
-                Back to sign in
+                {t("forgot.backToSignIn")}
               </Button>
             </div>
           )}
@@ -133,7 +138,7 @@ export function ForgotPasswordPage() {
 
         <p className="mt-5 text-center text-sm text-muted">
           <Link className="font-medium text-ink underline underline-offset-4" to="/login">
-            Back to sign in
+            {t("forgot.backToSignIn")}
           </Link>
         </p>
       </div>

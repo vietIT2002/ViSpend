@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
+import { useCategoryLabel, useLocale, useT } from "../../lib/i18n";
 import { vnd } from "../../lib/utils";
 import type { BudgetAlert } from "../../types";
+import { useCategories } from "../categories/hooks";
 import { useBudgetPlan } from "./hooks";
 
 const ALERT_TONE: Record<BudgetAlert, "green" | "yellow" | "red"> = {
@@ -13,11 +15,11 @@ const ALERT_TONE: Record<BudgetAlert, "green" | "yellow" | "red"> = {
   tight: "red",
   over: "red",
 };
-const ALERT_LABEL: Record<BudgetAlert, string> = {
-  safe: "Safe",
-  watch: "Watch",
-  tight: "Tight",
-  over: "Over",
+const ALERT_LABEL: Record<BudgetAlert, `budgets.alert.${BudgetAlert}`> = {
+  safe: "budgets.alert.safe",
+  watch: "budgets.alert.watch",
+  tight: "budgets.alert.tight",
+  over: "budgets.alert.over",
 };
 
 // Returns "YYYY-MM" when [from, to] is exactly one full calendar month, else null.
@@ -30,14 +32,23 @@ function fullCalendarMonth(from?: string, to?: string): string | null {
   return `${y}-${m}`;
 }
 
-function monthName(month: string) {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long" });
-}
-
 export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
+  const t = useT();
+  const locale = useLocale();
+  const categoryLabel = useCategoryLabel();
+  const { data: cats = [] } = useCategories();
   const month = fullCalendarMonth(from, to);
   const { data: plan } = useBudgetPlan(month ?? "");
+
+  const labelFor = (categoryId: string, fallback: string) => {
+    const cat = cats.find((c) => c.id === categoryId);
+    return cat ? categoryLabel(cat) : fallback;
+  };
+
+  const monthName = (m: string) => {
+    const [y, mm] = m.split("-").map(Number);
+    return new Date(y, mm - 1, 1).toLocaleString(locale, { month: "long" });
+  };
 
   if (!month) {
     return (
@@ -45,7 +56,7 @@ export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand-dark">
           <WalletCards size={18} />
         </span>
-        <p className="text-sm text-muted">Budget tracking appears for full-month views.</p>
+        <p className="text-sm text-muted">{t("pulse.fullMonthOnly")}</p>
       </Card>
     );
   }
@@ -60,24 +71,27 @@ export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand-dark">
             <WalletCards size={18} />
           </span>
-          <h2 className="font-medium text-ink">Monthly budget</h2>
+          <h2 className="font-medium text-ink">{t("pulse.monthlyBudget")}</h2>
         </div>
         <Link to="/budgets" className="text-sm font-medium text-brand-dark underline-offset-4 hover:underline">
-          Open budgets
+          {t("pulse.openBudgets")}
         </Link>
       </div>
 
       {hasBudget ? (
         <>
           <p className="mt-4 text-lg leading-relaxed text-ink">
-            <span className="font-semibold text-brand-dark">{monthName(month)} budget</span> is{" "}
-            <span className="nums">{vnd(plan!.monthly_budget)}</span>. You have{" "}
-            <span className="nums">{vnd(plan!.total_remaining)}</span> left this month.
+            {t("pulse.sentence", {
+              month: monthName(month),
+              budget: vnd(plan!.monthly_budget),
+              remaining: vnd(plan!.total_remaining),
+            })}
           </p>
           <p className="mt-1 text-sm text-muted">
-            Across <span className="nums">{plan!.items.length}</span>{" "}
-            {plan!.items.length === 1 ? "category" : "categories"} ·{" "}
-            <span className="nums">{vnd(plan!.total_spent)}</span> spent
+            {t(plan!.items.length === 1 ? "pulse.acrossOne" : "pulse.acrossOther", {
+              count: plan!.items.length,
+              spent: vnd(plan!.total_spent),
+            })}
           </p>
           {risks.length > 0 && (
             <ul className="mt-4 divide-y divide-line border-t border-line">
@@ -86,12 +100,12 @@ export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                     <p className="nums min-w-0 truncate text-sm text-charcoal">
-                      <span className="font-medium text-ink">{r.category}</span>{" "}
+                      <span className="font-medium text-ink">{labelFor(r.category_id, r.category)}</span>{" "}
                       {remaining < 0
-                        ? `is ${vnd(Math.abs(remaining))} over its ${vnd(r.amount)} limit`
-                        : `has ${vnd(r.remaining)} left from ${vnd(r.amount)}`}
+                        ? t("pulse.overLimit", { over: vnd(Math.abs(remaining)), limit: vnd(r.amount) })
+                        : t("pulse.underLimit", { remaining: vnd(r.remaining), limit: vnd(r.amount) })}
                     </p>
-                    <Badge tone={ALERT_TONE[r.alert]}>{ALERT_LABEL[r.alert]}</Badge>
+                    <Badge tone={ALERT_TONE[r.alert]}>{t(ALERT_LABEL[r.alert])}</Badge>
                   </li>
                 );
               })}
@@ -100,11 +114,10 @@ export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
         </>
       ) : (
         <p className="mt-4 text-sm text-muted">
-          No budget set for {monthName(month)}.{" "}
+          {t("pulse.noBudget", { month: monthName(month) })}{" "}
           <Link to="/budgets" className="font-medium text-brand-dark hover:underline">
-            Set a budget
+            {t("pulse.setBudget")}
           </Link>
-          .
         </p>
       )}
     </Card>

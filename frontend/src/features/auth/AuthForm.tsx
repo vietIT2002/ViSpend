@@ -16,14 +16,16 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { LanguageToggle } from "../../components/ui/language-toggle";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
+import { useErrorText, useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
+// zod messages are i18n keys, translated with t() at render time.
 const schema = z.object({
-  username: z
-    .string()
-    .regex(/^[a-z0-9]{3,20}$/, "3-20 characters, lowercase letters and digits only"),
+  username: z.string().regex(/^[a-z0-9]{3,20}$/, "auth.usernameRule"),
   password: z
     .string()
     .refine(
@@ -33,7 +35,7 @@ const schema = z.object({
         /[a-z]/.test(v) &&
         /\d/.test(v) &&
         /[^A-Za-z0-9]/.test(v),
-      "At least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character",
+      "auth.passwordRule",
     ),
 });
 
@@ -94,15 +96,16 @@ function FeatureItem({
 }
 
 function OverviewPreview() {
+  const t = useT();
   return (
     <div className="w-full max-w-[540px] rounded-lg border border-line bg-white/88 p-3 shadow-[0_18px_52px_rgb(47_52_55/0.10)] backdrop-blur">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-ink">Overview</h2>
+        <h2 className="text-base font-semibold text-ink">{t("auth.preview.overview")}</h2>
         <button
           type="button"
           className="inline-flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-xs font-semibold text-charcoal"
         >
-          This month
+          {t("auth.preview.thisMonth")}
           <span className="text-muted">v</span>
         </button>
       </div>
@@ -110,7 +113,7 @@ function OverviewPreview() {
       <div className="rounded-lg border border-line bg-surface p-3">
         <div className="grid gap-3 md:grid-cols-[0.9fr_1fr] md:items-center">
           <div>
-            <p className="text-xs font-semibold text-charcoal">Total balance</p>
+            <p className="text-xs font-semibold text-charcoal">{t("auth.preview.totalBalance")}</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
               <p className="nums text-2xl font-semibold leading-none text-ink">8,450,000</p>
               <p className="nums text-sm font-semibold text-ink">VND</p>
@@ -143,7 +146,7 @@ function OverviewPreview() {
 
       <div className="mt-3 grid gap-3 md:grid-cols-[1fr_0.92fr]">
         <div className="rounded-lg border border-line bg-surface p-3">
-          <p className="text-xs font-semibold text-charcoal">Spending by category</p>
+          <p className="text-xs font-semibold text-charcoal">{t("auth.preview.spendingByCategory")}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-[104px_1fr] sm:items-center">
             <div className="relative mx-auto grid size-24 place-items-center rounded-full bg-[conic-gradient(#b94d47_0_25%,#e1a93f_25%_42%,#5fa56b_42%_62%,#6d89d8_62%_78%,#7e74c9_78%_100%)]">
               <div className="grid size-16 place-items-center rounded-full bg-white text-center shadow-[inset_0_0_0_1px_rgb(234_234_234)]">
@@ -169,7 +172,7 @@ function OverviewPreview() {
         </div>
 
         <div className="rounded-lg border border-line bg-surface p-3">
-          <p className="text-xs font-semibold text-charcoal">Recent transactions</p>
+          <p className="text-xs font-semibold text-charcoal">{t("auth.preview.recentTransactions")}</p>
           <div className="mt-3 space-y-2">
             {recentRows.map(([title, category, amount, date, tone]) => (
               <div key={title} className="grid grid-cols-[24px_minmax(0,1fr)_68px] items-center gap-2">
@@ -194,6 +197,7 @@ function OverviewPreview() {
 }
 
 function HealthStrip() {
+  const t = useT();
   return (
     <div className="grid gap-4 rounded-lg bg-[#123d2a] p-4 text-white shadow-[0_18px_52px_rgb(18_61_42/0.18)] md:grid-cols-[1.05fr_0.8fr_1fr_1fr] md:divide-x md:divide-white/12">
       <div className="flex gap-3 md:pr-4">
@@ -201,25 +205,25 @@ function HealthStrip() {
           <IconSparkles size={20} />
         </span>
         <div>
-          <p className="text-xs text-white/78">Financial health</p>
-          <p className="mt-1 text-xl font-semibold text-[#8bd79e]">Good</p>
-          <p className="mt-1 text-xs leading-4 text-white/70">You're on the right track. Keep going.</p>
+          <p className="text-xs text-white/78">{t("auth.health.title")}</p>
+          <p className="mt-1 text-xl font-semibold text-[#8bd79e]">{t("auth.health.good")}</p>
+          <p className="mt-1 text-xs leading-4 text-white/70">{t("auth.health.onTrack")}</p>
         </div>
       </div>
       <div className="md:px-4">
-        <p className="text-xs text-white/78">Monthly savings rate</p>
+        <p className="text-xs text-white/78">{t("auth.health.savingsRate")}</p>
         <p className="nums mt-2 text-2xl font-semibold">28%</p>
-        <p className="mt-1 text-xs text-[#8bd79e]">Good</p>
+        <p className="mt-1 text-xs text-[#8bd79e]">{t("auth.health.good")}</p>
       </div>
       <div className="md:px-4">
-        <p className="text-xs text-white/78">Average daily spend</p>
+        <p className="text-xs text-white/78">{t("auth.health.avgDaily")}</p>
         <p className="nums mt-2 text-2xl font-semibold">281,667 <span className="text-sm">VND</span></p>
-        <p className="mt-1 text-xs text-[#8bd79e]">-8% vs last month</p>
+        <p className="mt-1 text-xs text-[#8bd79e]">{t("auth.health.avgDailyChange")}</p>
       </div>
       <div className="md:pl-4">
-        <p className="text-xs text-white/78">Top spending category</p>
-        <p className="mt-2 text-xl font-semibold">Food & Drink</p>
-        <p className="mt-1 text-xs text-[#e6c45f]">25% of total</p>
+        <p className="text-xs text-white/78">{t("auth.health.topCategory")}</p>
+        <p className="mt-2 text-xl font-semibold">Food &amp; Drink</p>
+        <p className="mt-1 text-xs text-[#e6c45f]">{t("auth.health.topCategoryShare")}</p>
       </div>
     </div>
   );
@@ -250,6 +254,8 @@ function BottomBenefit({
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
   const { login, loginWithGoogle, register } = useAuth();
+  const t = useT();
+  const errText = useErrorText();
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -271,7 +277,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
       navigate("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(errText(err));
     }
   }
 
@@ -283,12 +289,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         await loginWithGoogle(credential);
         navigate("/");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not sign in with Google.");
+        setError(errText(err, "auth.googleError"));
       } finally {
         setGoogleBusy(false);
       }
     },
-    [loginWithGoogle, navigate],
+    [errText, loginWithGoogle, navigate],
   );
 
   const handleGoogleError = useCallback((message: string) => {
@@ -306,28 +312,28 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <div className="mt-6 grid min-h-0 gap-6 xl:grid-cols-[310px_minmax(0,1fr)] xl:items-center 2xl:grid-cols-[350px_minmax(0,1fr)]">
               <div>
                 <h1 className="display max-w-2xl text-4xl leading-[1.05] text-ink 2xl:text-5xl">
-                  Understand your money.
-                  <span className="block text-brand-dark">Spend smarter.</span>
+                  {t("auth.brandTagline1")}
+                  <span className="block text-brand-dark">{t("auth.brandTagline2")}</span>
                 </h1>
                 <p className="mt-4 max-w-sm text-base leading-7 text-muted">
-                  Track, analyze and take control of your finances all in one beautiful dashboard.
+                  {t("auth.brandSubtitle")}
                 </p>
 
                 <div className="mt-7 space-y-4 2xl:space-y-5">
                   <FeatureItem
                     icon={IconChart}
-                    title="Track everything"
-                    body="See where your money goes, in real time."
+                    title={t("auth.feature.trackTitle")}
+                    body={t("auth.feature.trackBody")}
                   />
                   <FeatureItem
                     icon={IconSparkles}
-                    title="Smart insights"
-                    body="Understand your habits and find opportunities."
+                    title={t("auth.feature.insightsTitle")}
+                    body={t("auth.feature.insightsBody")}
                   />
                   <FeatureItem
                     icon={IconRepeat}
-                    title="Better decisions"
-                    body="Set goals and build a stronger future."
+                    title={t("auth.feature.decisionsTitle")}
+                    body={t("auth.feature.decisionsBody")}
                   />
                 </div>
               </div>
@@ -340,9 +346,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <div className="relative z-10 mt-5 space-y-4 2xl:mt-6">
               <HealthStrip />
               <div className="grid gap-4 rounded-lg border border-line bg-white/86 p-4 shadow-[0_18px_50px_rgb(47_52_55/0.06)] md:grid-cols-3">
-                <BottomBenefit icon={IconKey} title="Your data is secure" body="Bank-level encryption to protect your privacy." />
-                <BottomBenefit icon={IconRepeat} title="Real-time syncing" body="Always up-to-date across all your devices." />
-                <BottomBenefit icon={IconChart} title="Export anytime" body="Download your data whenever you need." />
+                <BottomBenefit icon={IconKey} title={t("auth.benefit.secureTitle")} body={t("auth.benefit.secureBody")} />
+                <BottomBenefit icon={IconRepeat} title={t("auth.benefit.syncTitle")} body={t("auth.benefit.syncBody")} />
+                <BottomBenefit icon={IconChart} title={t("auth.benefit.exportTitle")} body={t("auth.benefit.exportBody")} />
               </div>
             </div>
           </div>
@@ -350,58 +356,65 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
         <section className="grid rounded-lg border border-line bg-white px-5 py-6 sm:px-8 xl:px-10">
           <div className="mx-auto flex w-full max-w-[390px] flex-col justify-center">
-            <BrandMark compact />
+            <div className="flex items-center justify-between gap-3">
+              <BrandMark compact />
+              <LanguageToggle />
+            </div>
 
             <div className="mt-10">
-              <h1 className="display text-4xl text-ink">{isLogin ? "Welcome back" : "Create account"}</h1>
+              <h1 className="display text-4xl text-ink">{isLogin ? t("auth.welcomeBack") : t("auth.createAccount")}</h1>
               <p className="mt-3 text-base text-muted">
-                {isLogin ? "Sign in to continue to your account" : "Create your ViSpend account"}
+                {isLogin ? t("auth.signInSubtitle") : t("auth.registerSubtitle")}
               </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
               <div>
                 <Label htmlFor="username" className="mb-3 text-base font-medium normal-case tracking-normal text-ink">
-                  Username
+                  {t("auth.username")}
                 </Label>
                 <Input
                   id="username"
                   type="text"
                   autoComplete="username"
-                  placeholder="Enter your username"
+                  placeholder={t("auth.usernamePlaceholder")}
                   className="h-[52px] rounded-lg px-5 text-base"
                   {...field("username")}
                 />
-                {errors.username && <p className="mt-2 text-sm text-pastel-red-ink">{errors.username.message}</p>}
+                {errors.username && (
+                  <p className="mt-2 text-sm text-pastel-red-ink">{t(errors.username.message as TKey)}</p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="password" className="mb-3 text-base font-medium normal-case tracking-normal text-ink">
-                  Password
+                  {t("auth.password")}
                 </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete={isLogin ? "current-password" : "new-password"}
-                    placeholder="Enter your password"
+                    placeholder={t("auth.passwordPlaceholder")}
                     className="h-[52px] rounded-lg px-5 pr-12 text-base"
                     {...field("password")}
                   />
                   <button
                     type="button"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                     onClick={() => setShowPassword((value) => !value)}
                     className="absolute right-4 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
                   >
                     {showPassword ? <EyeOff size={19} strokeWidth={1.8} /> : <Eye size={19} strokeWidth={1.8} />}
                   </button>
                 </div>
-                {errors.password && <p className="mt-2 text-sm text-pastel-red-ink">{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="mt-2 text-sm text-pastel-red-ink">{t(errors.password.message as TKey)}</p>
+                )}
                 {isLogin && (
                   <div className="mt-4 text-right">
                     <Link to="/forgot-password" className="text-base font-medium text-brand-dark hover:text-ink">
-                      Forgot password?
+                      {t("auth.forgotPassword")}
                     </Link>
                   </div>
                 )}
@@ -414,14 +427,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               )}
 
               <Button className="h-[52px] w-full rounded-lg text-base" disabled={isSubmitting}>
-                {isSubmitting ? "Please wait..." : isLogin ? "Sign in" : "Create account"}
+                {isSubmitting ? t("common.pleaseWait") : isLogin ? t("auth.signIn") : t("auth.createAccount")}
               </Button>
             </form>
 
             <div className="mt-8">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
                 <span className="h-px bg-line" />
-                <span className="text-sm text-muted">{isLogin ? "or continue with" : "or sign up with"}</span>
+                <span className="text-sm text-muted">{isLogin ? t("auth.continueWith") : t("auth.signUpWith")}</span>
                 <span className="h-px bg-line" />
               </div>
 
@@ -437,16 +450,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <p className="mt-8 text-center text-base text-muted">
               {isLogin ? (
                 <>
-                  New to ViSpend?{" "}
+                  {t("auth.newToVispend")}{" "}
                   <Link className="font-medium text-brand-dark hover:text-ink" to="/register">
-                    Create an account
+                    {t("auth.createAnAccount")}
                   </Link>
                 </>
               ) : (
                 <>
-                  Already have an account?{" "}
+                  {t("auth.alreadyHaveAccount")}{" "}
                   <Link className="font-medium text-brand-dark hover:text-ink" to="/login">
-                    Sign in
+                    {t("auth.signIn")}
                   </Link>
                 </>
               )}

@@ -7,6 +7,7 @@ export interface User {
   email: string | null;
   full_name: string | null;
   phone: string | null;
+  language: "en" | "vi";
   is_verified: boolean;
   is_google: boolean;
 }
@@ -17,6 +18,7 @@ export interface Category {
   type: TxnType;
   icon: string | null;
   color: string | null;
+  key: string | null;
   is_default: boolean;
 }
 

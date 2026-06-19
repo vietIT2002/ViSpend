@@ -40,6 +40,23 @@ def test_update_username_invalid(auth_client):
     assert r.status_code == 422
 
 
+def test_language_defaults_to_english(auth_client):
+    r = auth_client.get("/api/auth/me")
+    assert r.status_code == 200
+    assert r.json()["language"] == "en"
+
+
+def test_update_language(auth_client):
+    r = auth_client.patch("/api/auth/me", json={"language": "vi"})
+    assert r.status_code == 200
+    assert r.json()["language"] == "vi"
+    assert auth_client.get("/api/auth/me").json()["language"] == "vi"
+
+
+def test_invalid_language_rejected(auth_client):
+    assert auth_client.patch("/api/auth/me", json={"language": "fr"}).status_code == 422
+
+
 def test_change_password(auth_client):
     r = auth_client.post(
         "/api/auth/change-password",

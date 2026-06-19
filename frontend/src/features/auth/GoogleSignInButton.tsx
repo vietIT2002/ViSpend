@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useT } from "../../lib/i18n";
+
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ??
   "486347902494-mruf16d1kl8n3u8hqv5qtohtd850ib6j.apps.googleusercontent.com";
@@ -82,6 +84,7 @@ export function GoogleSignInButton({
   onError: (message: string) => void;
   disabled?: boolean;
 }) {
+  const t = useT();
   const clientRef = useRef<TokenClient | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -90,14 +93,14 @@ export function GoogleSignInButton({
 
     async function init() {
       if (!GOOGLE_CLIENT_ID) {
-        onError("Google sign-in is not configured.");
+        onError(t("auth.google.notConfigured"));
         return;
       }
       try {
         await loadGoogleScript();
-      } catch (err) {
+      } catch {
         if (!cancelled) {
-          onError(err instanceof Error ? err.message : "Could not load Google sign-in.");
+          onError(t("auth.google.loadError"));
         }
         return;
       }
@@ -110,7 +113,7 @@ export function GoogleSignInButton({
           if (response.access_token) {
             onCredential(response.access_token);
           } else {
-            onError("Google sign-in was cancelled.");
+            onError(t("auth.google.cancelled"));
           }
         },
       });
@@ -122,7 +125,7 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [onCredential, onError]);
+  }, [onCredential, onError, t]);
 
   return (
     <button
@@ -132,7 +135,7 @@ export function GoogleSignInButton({
       className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-line bg-white text-base font-medium text-charcoal transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <GoogleLogo />
-      {ready ? "Continue with Google" : "Loading Google..."}
+      {ready ? t("auth.google.continue") : t("auth.google.loading")}
     </button>
   );
 }

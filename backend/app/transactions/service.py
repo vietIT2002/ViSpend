@@ -16,7 +16,7 @@ EDIT_WINDOW = timedelta(hours=24)
 def get_owned_transaction(session: Session, user: User, txn_id: uuid.UUID) -> Transaction:
     txn = session.get(Transaction, txn_id)
     if txn is None or txn.user_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaction not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "transaction_not_found")
     return txn
 
 
@@ -27,7 +27,7 @@ def _ensure_within_edit_window(txn: Transaction) -> None:
     if datetime.now(timezone.utc) - created > EDIT_WINDOW:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Transactions can no longer be changed 24 hours after they are recorded",
+            "edit_window_closed",
         )
 
 

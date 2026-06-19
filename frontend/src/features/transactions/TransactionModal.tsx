@@ -11,13 +11,15 @@ import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker";
 import { useCategories, useCreateCategory } from "../categories/hooks";
+import { useCategoryLabel, useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import type { Transaction, TxnType } from "../../types";
 import { useCreateTransaction, useUpdateTransaction } from "./hooks";
 
 const schema = z.object({
   type: z.enum(["expense", "income"]),
-  amount: z.string().refine((v) => Number(v) > 0, "Enter an amount greater than 0"),
-  category_id: z.string().uuid("Pick or create a category"),
+  amount: z.string().refine((v) => Number(v) > 0, "txnModal.amountError"),
+  category_id: z.string().uuid("txnModal.categoryError"),
   occurred_on: z.string().min(1),
   method: z.enum(["cash", "transfer", "card"]),
   note: z.string().optional(),
@@ -40,6 +42,8 @@ export function TransactionModal({
   const createCat = useCreateCategory();
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
+  const t = useT();
+  const categoryLabel = useCategoryLabel();
   const isEdit = Boolean(editing);
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<Form>({
@@ -49,7 +53,9 @@ export function TransactionModal({
 
   const type = watch("type");
   const categoryId = watch("category_id");
-  const options = cats.filter((c) => c.type === type);
+  const options = cats
+    .filter((c) => c.type === type)
+    .map((c) => ({ id: c.id, name: categoryLabel(c) }));
 
   // (Re)initialise the form whenever the modal opens.
   useEffect(() => {
@@ -91,25 +97,25 @@ export function TransactionModal({
   const pending = create.isPending || update.isPending;
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? "Edit transaction" : "New transaction"}>
+    <Modal open={open} onClose={onClose} title={isEdit ? t("txnModal.editTitle") : t("txnModal.newTitle")}>
       <form onSubmit={handleSubmit(submit)} className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>Type</Label>
+            <Label>{t("txnModal.type")}</Label>
             <Select {...register("type")}>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
+              <option value="expense">{t("type.expense")}</option>
+              <option value="income">{t("type.income")}</option>
             </Select>
           </div>
           <div>
-            <Label>Amount (VND)</Label>
+            <Label>{t("txnModal.amount")}</Label>
             <Input type="number" inputMode="decimal" placeholder="0" className="nums" {...register("amount")} />
-            {errors.amount && <p className="mt-1 text-xs text-expense">{errors.amount.message}</p>}
+            {errors.amount && <p className="mt-1 text-xs text-expense">{t(errors.amount.message as TKey)}</p>}
           </div>
         </div>
 
         <div>
-          <Label>Category</Label>
+          <Label>{t("txnModal.category")}</Label>
           <CategoryCombobox
             options={options}
             value={categoryId ?? ""}
@@ -117,36 +123,36 @@ export function TransactionModal({
             onCreate={createCategory}
           />
           {errors.category_id && (
-            <p className="mt-1 text-xs text-expense">{errors.category_id.message}</p>
+            <p className="mt-1 text-xs text-expense">{t(errors.category_id.message as TKey)}</p>
           )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>Date</Label>
+            <Label>{t("txnModal.date")}</Label>
             <Input type="date" className="nums" {...register("occurred_on")} />
           </div>
           <div>
-            <Label>Method</Label>
+            <Label>{t("txnModal.method")}</Label>
             <Select {...register("method")}>
-              <option value="cash">Cash</option>
-              <option value="transfer">Transfer</option>
-              <option value="card">Card</option>
+              <option value="cash">{t("method.cash")}</option>
+              <option value="transfer">{t("method.transfer")}</option>
+              <option value="card">{t("method.card")}</option>
             </Select>
           </div>
         </div>
 
         <div>
-          <Label>Note</Label>
-          <Input placeholder="Optional - what was it for?" {...register("note")} />
+          <Label>{t("txnModal.note")}</Label>
+          <Input placeholder={t("txnModal.notePlaceholder")} {...register("note")} />
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button disabled={pending}>
-            {pending ? "Saving..." : isEdit ? "Update" : "Save"}
+            {pending ? t("common.saving") : isEdit ? t("txnModal.update") : t("common.save")}
           </Button>
         </div>
       </form>

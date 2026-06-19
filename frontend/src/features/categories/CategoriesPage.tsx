@@ -7,7 +7,7 @@ import { Card } from "../../components/ui/card";
 import { ColorSwatchPicker, DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
-import { ApiError } from "../../lib/api";
+import { useCategoryLabel, useErrorText, useT } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 import type { Category, TxnType } from "../../types";
 import {
@@ -28,6 +28,8 @@ const ICON_KEYS = [
 export function CategoriesPage() {
   const { data: cats = [] } = useCategories();
   const create = useCreateCategory();
+  const t = useT();
+  const errText = useErrorText();
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -42,7 +44,7 @@ export function CategoriesPage() {
       { name: name.trim(), type, icon, color },
       {
         onSuccess: () => setName(""),
-        onError: (e) => setError(e instanceof ApiError ? e.message : "Could not create category."),
+        onError: (e) => setError(errText(e, "cat.createError")),
       },
     );
   }
@@ -53,36 +55,36 @@ export function CategoriesPage() {
   return (
     <div className="space-y-6">
       <header className="max-w-2xl space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Category system</p>
-        <h1 className="display text-3xl text-ink sm:text-4xl">Keep income and spending labels clean.</h1>
-        <p className="text-sm text-muted">Create category names, icons, and colors for faster transaction entry.</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.system")}</p>
+        <h1 className="display text-3xl text-ink sm:text-4xl">{t("cat.title")}</h1>
+        <p className="text-sm text-muted">{t("cat.subtitle")}</p>
       </header>
 
       <Card className="rise space-y-4 p-5">
         <div className="grid gap-3 lg:grid-cols-[1fr_160px_auto] lg:items-end">
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-              New category
+              {t("cat.newCategory")}
             </label>
             <Input
-              placeholder="e.g. Coffee, Rent, Freelance"
+              placeholder={t("cat.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && add()}
             />
           </div>
           <Select value={type} onChange={(e) => setType(e.target.value as TxnType)}>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
+            <option value="expense">{t("type.expense")}</option>
+            <option value="income">{t("type.income")}</option>
           </Select>
           <Button onClick={add} disabled={create.isPending}>
-            <IconPlus size={16} /> Add
+            <IconPlus size={16} /> {t("common.add")}
           </Button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Icon</span>
+            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.icon")}</span>
             <div className="flex flex-wrap gap-1.5">
               {ICON_KEYS.map((k) => (
                 <button
@@ -101,7 +103,7 @@ export function CategoriesPage() {
             </div>
           </div>
           <div>
-            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Color</span>
+            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.color")}</span>
             <ColorSwatchPicker value={color} onChange={setColor} />
           </div>
         </div>
@@ -114,8 +116,8 @@ export function CategoriesPage() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Expense categories" items={expense} onError={setError} />
-        <Section title="Income categories" items={income} onError={setError} />
+        <Section title={t("cat.expenseCategories")} items={expense} onError={setError} />
+        <Section title={t("cat.incomeCategories")} items={income} onError={setError} />
       </div>
     </div>
   );
@@ -130,14 +132,15 @@ function Section({
   items: Category[];
   onError: (m: string) => void;
 }) {
+  const t = useT();
   return (
     <Card className="rise overflow-hidden">
       <div className="border-b border-line px-5 py-4">
         <h2 className="font-medium text-ink">{title}</h2>
-        <p className="mt-1 text-xs text-muted">{items.length} saved labels</p>
+        <p className="mt-1 text-xs text-muted">{t("cat.savedLabels", { count: items.length })}</p>
       </div>
       {items.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-muted">No categories yet.</p>
+        <p className="px-5 py-8 text-center text-sm text-muted">{t("cat.none")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {items.map((c) => (
@@ -158,6 +161,9 @@ function CategoryRow({
 }) {
   const update = useUpdateCategory();
   const del = useDeleteCategory();
+  const t = useT();
+  const errText = useErrorText();
+  const categoryLabel = useCategoryLabel();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(c.name);
 
@@ -167,7 +173,7 @@ function CategoryRow({
       { id: c.id, name: editName.trim() },
       {
         onSuccess: () => setEditing(false),
-        onError: (e) => onError(e instanceof ApiError ? e.message : "Rename failed."),
+        onError: (e) => onError(errText(e, "cat.renameError")),
       },
     );
   }
@@ -193,21 +199,21 @@ function CategoryRow({
           className="h-9 min-w-[180px] flex-1"
         />
       ) : (
-        <span className="min-w-0 flex-1 truncate font-medium text-ink">{c.name}</span>
+        <span className="min-w-0 flex-1 truncate font-medium text-ink">{categoryLabel(c)}</span>
       )}
 
       <div className="flex items-center gap-1.5">
         {editing ? (
           <>
-            <Button onClick={saveName} className="size-9 px-0" aria-label="Save">
+            <Button onClick={saveName} className="size-9 px-0" aria-label={t("cat.saveAria")}>
               <IconCheck size={16} />
             </Button>
-            <Button variant="ghost" onClick={() => setEditing(false)} className="size-9 px-0" aria-label="Cancel">
+            <Button variant="ghost" onClick={() => setEditing(false)} className="size-9 px-0" aria-label={t("cat.cancelAria")}>
               <IconX size={16} />
             </Button>
           </>
         ) : c.is_default ? (
-          <Badge tone="neutral">Default</Badge>
+          <Badge tone="neutral">{t("cat.default")}</Badge>
         ) : (
           <>
             <Button
@@ -217,7 +223,7 @@ function CategoryRow({
                 setEditing(true);
               }}
               className="size-9 px-0"
-              aria-label="Rename"
+              aria-label={t("common.rename")}
             >
               <IconPencil size={16} />
             </Button>
@@ -225,11 +231,11 @@ function CategoryRow({
               variant="danger"
               onClick={() =>
                 del.mutate(c.id, {
-                  onError: (e) => onError(e instanceof ApiError ? e.message : "Delete failed."),
+                  onError: (e) => onError(errText(e, "cat.deleteError")),
                 })
               }
               className="size-9 px-0"
-              aria-label="Delete"
+              aria-label={t("common.delete")}
             >
               <IconTrash size={16} />
             </Button>

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Eye, EyeOff, IdCard, Lock, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Check, Eye, EyeOff, IdCard, Languages, Lock, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -9,8 +9,11 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { LanguageToggle } from "../../components/ui/language-toggle";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { useT } from "../../lib/i18n";
+import type { TKey } from "../../lib/i18n/en";
 import { cn } from "../../lib/utils";
 
 const strongPassword = (v: string) =>
@@ -20,13 +23,12 @@ const strongPassword = (v: string) =>
   /\d/.test(v) &&
   /[^A-Za-z0-9]/.test(v);
 
+// zod messages are i18n keys; they are translated with t() at render time.
 const profileSchema = z.object({
-  username: z
-    .string()
-    .regex(/^[a-z0-9]{3,20}$/, "3-20 characters, lowercase letters and digits only"),
-  full_name: z.union([z.string().max(80, "Name is too long"), z.literal("")]),
+  username: z.string().regex(/^[a-z0-9]{3,20}$/, "settings.err.usernameRule"),
+  full_name: z.union([z.string().max(80, "settings.err.nameTooLong"), z.literal("")]),
   phone: z.union([
-    z.string().regex(/^[0-9+\-\s]{6,20}$/, "Enter a valid phone number"),
+    z.string().regex(/^[0-9+\-\s]{6,20}$/, "settings.err.invalidPhone"),
     z.literal(""),
   ]),
 });
@@ -34,12 +36,12 @@ type ProfileForm = z.infer<typeof profileSchema>;
 
 const passwordSchema = z
   .object({
-    current_password: z.string().min(1, "Enter your current password"),
-    new_password: z.string().refine(strongPassword, "Does not meet the requirements below"),
+    current_password: z.string().min(1, "settings.err.currentRequired"),
+    new_password: z.string().refine(strongPassword, "settings.err.weakPassword"),
     confirm: z.string(),
   })
   .refine((d) => d.new_password === d.confirm, {
-    message: "Passwords do not match",
+    message: "settings.err.passwordMismatch",
     path: ["confirm"],
   });
 type PasswordForm = z.infer<typeof passwordSchema>;
@@ -117,11 +119,12 @@ function IField({
 }
 
 function EyeToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={onToggle}
-      aria-label={shown ? "Hide password" : "Show password"}
+      aria-label={shown ? t("auth.hidePassword") : t("auth.showPassword")}
       className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
     >
       {shown ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -131,6 +134,7 @@ function EyeToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }
 
 function AccountSummary() {
   const { user } = useAuth();
+  const t = useT();
   const initial = (user?.username ?? user?.email ?? "?").charAt(0).toUpperCase();
   return (
     <Card className="rise p-5" style={rise(0)}>
@@ -139,14 +143,16 @@ function AccountSummary() {
           {initial}
         </span>
         <div className="min-w-0">
-          <p className="display truncate text-2xl text-ink">{user?.username ?? "Your account"}</p>
-          <p className="nums truncate text-sm text-muted">{user?.email ?? "No email linked"}</p>
+          <p className="display truncate text-2xl text-ink">{user?.username ?? t("settings.yourAccount")}</p>
+          <p className="nums truncate text-sm text-muted">{user?.email ?? t("settings.noEmail")}</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Badge tone={user?.is_verified ? "green" : "neutral"}>
-            {user?.is_verified ? "Verified" : "Unverified"}
+            {user?.is_verified ? t("settings.verified") : t("settings.unverified")}
           </Badge>
-          <Badge tone={user?.email ? "blue" : "neutral"}>{user?.email ? "Email linked" : "No email"}</Badge>
+          <Badge tone={user?.email ? "blue" : "neutral"}>
+            {user?.email ? t("settings.emailLinked") : t("settings.noEmailBadge")}
+          </Badge>
         </div>
       </div>
     </Card>
@@ -155,6 +161,7 @@ function AccountSummary() {
 
 function ProfileCard() {
   const { user, refreshUser } = useAuth();
+  const t = useT();
   const {
     register,
     handleSubmit,
@@ -178,42 +185,45 @@ function ProfileCard() {
         phone: data.phone ? data.phone : null,
       });
       await refreshUser();
-      setNotice({ tone: "ok", text: "Profile updated." });
+      setNotice({ tone: "ok", text: t("settings.profileUpdated") });
     } catch (err) {
-      setNotice({ tone: "error", text: err instanceof ApiError ? err.message : "Could not update profile." });
+      setNotice({
+        tone: "error",
+        text: err instanceof ApiError ? t(`errors.${err.message}` as TKey) : t("settings.profileUpdateError"),
+      });
     }
   }
 
   return (
     <Card className="rise space-y-5 p-5 sm:p-6" style={rise(1)}>
-      <SectionHead icon={UserRound} title="Profile information" hint="Update your name, username, and phone." />
+      <SectionHead icon={UserRound} title={t("settings.profileTitle")} hint={t("settings.profileHint")} />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <IField
           id="full_name"
-          label="Full name"
+          label={t("settings.fullName")}
           icon={IdCard}
-          placeholder="Your name"
-          error={errors.full_name?.message}
+          placeholder={t("settings.fullNamePlaceholder")}
+          error={errors.full_name?.message ? t(errors.full_name.message as TKey) : undefined}
           {...register("full_name")}
         />
         <IField
           id="username"
-          label="Username"
+          label={t("settings.username")}
           icon={UserRound}
           autoComplete="username"
-          error={errors.username?.message}
+          error={errors.username?.message ? t(errors.username.message as TKey) : undefined}
           {...register("username")}
         />
         <IField
           id="phone"
-          label="Phone"
+          label={t("settings.phone")}
           icon={Phone}
-          placeholder="e.g. 0901234567"
-          error={errors.phone?.message}
+          placeholder={t("settings.phonePlaceholder")}
+          error={errors.phone?.message ? t(errors.phone.message as TKey) : undefined}
           {...register("phone")}
         />
         <div>
-          <Label htmlFor="email">Email (can&apos;t be changed)</Label>
+          <Label htmlFor="email">{t("settings.emailFixed")}</Label>
           <div className="relative">
             <Mail
               size={16}
@@ -231,7 +241,7 @@ function ProfileCard() {
         <NoticeBar notice={notice} />
         <div className="flex justify-end">
           <Button disabled={isSubmitting}>
-            <Check size={16} /> {isSubmitting ? "Saving..." : "Save changes"}
+            <Check size={16} /> {isSubmitting ? t("common.saving") : t("common.saveChanges")}
           </Button>
         </div>
       </form>
@@ -247,15 +257,16 @@ function PasswordCard() {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
+  const t = useT();
   const [notice, setNotice] = useState<Notice>(null);
   const [show, setShow] = useState({ current: false, next: false, confirm: false });
 
   const newPw = watch("new_password") ?? "";
   const reqs = [
-    { ok: newPw.length >= 8, label: "8+ characters" },
-    { ok: /[A-Z]/.test(newPw) && /[a-z]/.test(newPw), label: "Upper & lowercase" },
-    { ok: /\d/.test(newPw), label: "A number" },
-    { ok: /[^A-Za-z0-9]/.test(newPw), label: "A special character" },
+    { ok: newPw.length >= 8, label: t("settings.req.length") },
+    { ok: /[A-Z]/.test(newPw) && /[a-z]/.test(newPw), label: t("settings.req.case") },
+    { ok: /\d/.test(newPw), label: t("settings.req.number") },
+    { ok: /[^A-Za-z0-9]/.test(newPw), label: t("settings.req.special") },
   ];
 
   async function onSubmit(data: PasswordForm) {
@@ -266,33 +277,36 @@ function PasswordCard() {
         new_password: data.new_password,
       });
       reset({ current_password: "", new_password: "", confirm: "" });
-      setNotice({ tone: "ok", text: "Password updated." });
+      setNotice({ tone: "ok", text: t("settings.passwordUpdated") });
     } catch (err) {
-      setNotice({ tone: "error", text: err instanceof ApiError ? err.message : "Could not change password." });
+      setNotice({
+        tone: "error",
+        text: err instanceof ApiError ? t(`errors.${err.message}` as TKey) : t("settings.passwordChangeError"),
+      });
     }
   }
 
   return (
     <Card className="rise space-y-5 p-5 sm:p-6" style={rise(2)}>
-      <SectionHead icon={ShieldCheck} title="Change password" hint="Use a strong password you don't use elsewhere." />
+      <SectionHead icon={ShieldCheck} title={t("settings.passwordTitle")} hint={t("settings.passwordHint")} />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <IField
           id="current_password"
-          label="Current password"
+          label={t("settings.currentPassword")}
           icon={Lock}
           type={show.current ? "text" : "password"}
           autoComplete="current-password"
-          error={errors.current_password?.message}
+          error={errors.current_password?.message ? t(errors.current_password.message as TKey) : undefined}
           trailing={<EyeToggle shown={show.current} onToggle={() => setShow((s) => ({ ...s, current: !s.current }))} />}
           {...register("current_password")}
         />
         <IField
           id="new_password"
-          label="New password"
+          label={t("settings.newPassword")}
           icon={Lock}
           type={show.next ? "text" : "password"}
           autoComplete="new-password"
-          error={errors.new_password?.message}
+          error={errors.new_password?.message ? t(errors.new_password.message as TKey) : undefined}
           trailing={<EyeToggle shown={show.next} onToggle={() => setShow((s) => ({ ...s, next: !s.next }))} />}
           {...register("new_password")}
         />
@@ -318,18 +332,18 @@ function PasswordCard() {
 
         <IField
           id="confirm"
-          label="Confirm new password"
+          label={t("settings.confirmPassword")}
           icon={Lock}
           type={show.confirm ? "text" : "password"}
           autoComplete="new-password"
-          error={errors.confirm?.message}
+          error={errors.confirm?.message ? t(errors.confirm.message as TKey) : undefined}
           trailing={<EyeToggle shown={show.confirm} onToggle={() => setShow((s) => ({ ...s, confirm: !s.confirm }))} />}
           {...register("confirm")}
         />
         <NoticeBar notice={notice} />
         <div className="flex justify-end">
           <Button disabled={isSubmitting}>
-            <ShieldCheck size={16} /> {isSubmitting ? "Saving..." : "Update password"}
+            <ShieldCheck size={16} /> {isSubmitting ? t("common.saving") : t("settings.updatePassword")}
           </Button>
         </div>
       </form>
@@ -337,23 +351,38 @@ function PasswordCard() {
   );
 }
 
+function LanguageCard() {
+  const t = useT();
+  return (
+    <Card className="rise space-y-4 p-5 sm:p-6" style={rise(3)}>
+      <SectionHead icon={Languages} title={t("language.label")} hint={t("language.hint")} />
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-ink">{t("language.label")}</span>
+        <LanguageToggle />
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { user } = useAuth();
+  const t = useT();
   // Google accounts sign in through Google, so there's no password to change.
   const showPassword = user ? !user.is_google : false;
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <header className="max-w-2xl space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Account</p>
-        <h1 className="display text-3xl text-ink sm:text-4xl">Settings</h1>
-        <p className="text-sm text-muted">Manage your account details and security.</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("settings.account")}</p>
+        <h1 className="display text-3xl text-ink sm:text-4xl">{t("settings.title")}</h1>
+        <p className="text-sm text-muted">{t("settings.subtitle")}</p>
       </header>
       <AccountSummary />
       <div className={cn("grid items-start gap-5", showPassword && "lg:grid-cols-2")}>
         <ProfileCard />
         {showPassword && <PasswordCard />}
       </div>
+      <LanguageCard />
     </div>
   );
 }
