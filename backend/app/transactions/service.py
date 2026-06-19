@@ -2,6 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.categories.service import get_accessible_category
@@ -41,21 +42,29 @@ def list_transactions(
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Transaction], int]:
-    statement = select(Transaction).where(Transaction.user_id == user.id)
+    filters = [Transaction.user_id == user.id]
     if type_ is not None:
-        statement = statement.where(Transaction.type == type_)
+        filters.append(Transaction.type == type_)
     if category_id is not None:
-        statement = statement.where(Transaction.category_id == category_id)
+        filters.append(Transaction.category_id == category_id)
     if method is not None:
-        statement = statement.where(Transaction.method == method)
+        filters.append(Transaction.method == method)
     if from_date is not None:
-        statement = statement.where(Transaction.occurred_on >= from_date)
+        filters.append(Transaction.occurred_on >= from_date)
     if to_date is not None:
-        statement = statement.where(Transaction.occurred_on <= to_date)
-    transactions = session.exec(statement.order_by(Transaction.occurred_on.desc())).all()
-    total = len(transactions)
-    start = (page - 1) * page_size
-    return transactions[start : start + page_size], total
+        filters.append(Transaction.occurred_on <= to_date)
+
+    total = session.exec(select(func.count()).select_from(Transaction).where(*filters)).one()
+
+    # created_at is a stable tiebreaker so same-day rows page deterministically.
+    items = session.exec(
+        select(Transaction)
+        .where(*filters)
+        .order_by(Transaction.occurred_on.desc(), Transaction.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    return items, total
 
 
 def create_transaction(session: Session, user: User, body: TransactionCreate) -> Transaction:

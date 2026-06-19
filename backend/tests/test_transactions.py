@@ -68,6 +68,33 @@ def test_transaction_filters_by_type_and_date(auth_client):
     assert r.json()["items"][0]["type"] == "expense"
 
 
+def test_pagination_returns_correct_page_and_total(auth_client):
+    category_id = _category_id(auth_client)
+    # 5 expenses on distinct dates so ordering (occurred_on desc) is deterministic.
+    for day in range(1, 6):
+        auth_client.post(
+            "/api/transactions",
+            json={
+                "type": "expense",
+                "amount": f"{day}0000",
+                "category_id": category_id,
+                "occurred_on": f"2026-06-0{day}",
+                "method": "cash",
+            },
+        )
+
+    page1 = auth_client.get("/api/transactions?page=1&page_size=2").json()
+    assert page1["total"] == 5
+    assert [t["occurred_on"] for t in page1["items"]] == ["2026-06-05", "2026-06-04"]
+
+    page2 = auth_client.get("/api/transactions?page=2&page_size=2").json()
+    assert page2["total"] == 5
+    assert [t["occurred_on"] for t in page2["items"]] == ["2026-06-03", "2026-06-02"]
+
+    page3 = auth_client.get("/api/transactions?page=3&page_size=2").json()
+    assert [t["occurred_on"] for t in page3["items"]] == ["2026-06-01"]
+
+
 def test_cannot_use_other_users_category(client):
     client.post("/api/auth/register", json={"username": "usera", "password": "Password123!"})
     r = client.post("/api/auth/login", data={"username": "usera", "password": "Password123!"})

@@ -125,6 +125,27 @@ def test_category_spend_only_that_category(auth_client):
     assert item["spent"] == "1500000.00"
 
 
+def test_available_money_excludes_income_after_the_month(auth_client):
+    # Income lands in July; viewing June must not count it as available.
+    _txn(auth_client, "income", _cat(auth_client, "income"), "50000000", on="2026-07-01")
+    plan = auth_client.get("/api/budgets?month=2026-06").json()
+    assert plan["available_money"] == "0.00"
+
+
+def test_available_money_counts_income_through_end_of_month(auth_client):
+    # Income earlier in the year is available when budgeting a later month.
+    _txn(auth_client, "income", _cat(auth_client, "income"), "9000000", on="2026-05-10")
+    plan = auth_client.get("/api/budgets?month=2026-06").json()
+    assert plan["available_money"] == "9000000.00"
+
+
+def test_allocation_rejected_when_income_is_after_the_month(auth_client):
+    # Funds exist all-time, but not yet as of the budgeted month -> rejected.
+    _txn(auth_client, "income", _cat(auth_client, "income"), "50000000", on="2026-07-01")
+    cid = _expense_cats(auth_client)[0]
+    assert _allocate(auth_client, cid, "1000000", month="2026-06").status_code == 422
+
+
 def test_alert_thresholds():
     limit = Decimal("1000000")
     assert _alert(Decimal("690000"), limit) == "safe"
@@ -134,7 +155,8 @@ def test_alert_thresholds():
 
 
 def test_copy_last_month(auth_client):
-    _fund(auth_client)
+    # Fund in May so the May budget has money available as of that month.
+    _txn(auth_client, "income", _cat(auth_client, "income"), "50000000", on="2026-05-01")
     cid = _expense_cats(auth_client)[0]
     _allocate(auth_client, cid, "2000000", month="2026-05")
     r = auth_client.post("/api/budgets/copy", json={"from_month": "2026-05", "to_month": "2026-06"})

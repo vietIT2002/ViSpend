@@ -29,8 +29,19 @@ def _month_bounds(month: str) -> tuple[date, date]:
     return first, nxt - timedelta(days=1)
 
 
-def _available_money(session: Session, user_id: uuid.UUID) -> Decimal:
-    txns = session.exec(select(Transaction).where(Transaction.user_id == user_id)).all()
+def _available_money(session: Session, user_id: uuid.UUID, as_of: date) -> Decimal:
+    """Net balance (income - expense) of everything up to and including `as_of`.
+
+    Bounded to the budgeted month's last day so the figure is consistent with the
+    month being viewed: income or spending dated after the month is not yet
+    available to budget for that month.
+    """
+    txns = session.exec(
+        select(Transaction).where(
+            Transaction.user_id == user_id,
+            Transaction.occurred_on <= as_of,
+        )
+    ).all()
     income = sum((t.amount for t in txns if t.type == TxnType.income), ZERO)
     expense = sum((t.amount for t in txns if t.type == TxnType.expense), ZERO)
     return income - expense
@@ -107,7 +118,7 @@ def _allocations(session: Session, budget_month_id: uuid.UUID) -> list[BudgetAll
 
 def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
     first, last = _month_bounds(month)
-    available = _available_money(session, user.id)
+    available = _available_money(session, user.id, last)
     bm = _get_month(session, user.id, first)
 
     spent_by_cat = _spent_by_category(session, user.id, first, last)
@@ -156,12 +167,12 @@ def upsert_allocation(
     session: Session, user: User, month: str, category_id: uuid.UUID, amount: Decimal
 ) -> BudgetPlanOut:
     _owned_expense_category(session, user.id, category_id)
-    first = _month_first_day(month)
+    first, last = _month_bounds(month)
     bm = _get_or_create_month(session, user.id, first)
 
     existing = _allocations(session, bm.id)
     others_total = sum((a.amount for a in existing if a.category_id != category_id), ZERO)
-    if others_total + amount > _available_money(session, user.id):
+    if others_total + amount > _available_money(session, user.id, last):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Budget cannot exceed your available money."
         )

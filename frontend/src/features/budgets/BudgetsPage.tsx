@@ -300,7 +300,8 @@ export function BudgetsPage() {
             <h2 className="font-medium text-ink">Available money</h2>
             <p className="nums text-xl font-semibold text-ink">{vnd(available)}</p>
             <p className="text-xs text-muted">
-              Your total category budgets can&apos;t exceed this (income minus expenses so far).
+              Income minus expenses through the end of {monthName(month)}. Your total category
+              budgets can&apos;t exceed this.
             </p>
           </Card>
         </div>
