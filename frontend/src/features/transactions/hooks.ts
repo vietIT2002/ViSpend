@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, buildQuery } from "../../lib/api";
-import type { Paginated, PayMethod, Transaction, TxnType } from "../../types";
+import type { Paginated, ParseSuggestion, PayMethod, Transaction, TxnType } from "../../types";
 
 export interface TxnFilter {
   type?: TxnType;
@@ -51,5 +51,23 @@ export function useDeleteTransaction() {
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
+  });
+}
+
+export function useParseText() {
+  return useMutation({
+    mutationFn: (text: string) => api.post<ParseSuggestion>("/transactions/parse", { text }),
+  });
+}
+
+export function useUploadReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: Blob }) => {
+      const form = new FormData();
+      form.append("file", file, "receipt.jpg");
+      return api.post<Transaction>(`/transactions/${id}/receipt`, form);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
   });
 }
