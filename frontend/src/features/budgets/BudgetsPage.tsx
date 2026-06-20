@@ -181,7 +181,7 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
 
   return (
     <div className="border-b border-line bg-canvas px-4 py-3.5 sm:px-5">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_auto]">
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label={t("txn.colCategory")}>
           <option value="">{t("budgets.chooseCategory")}</option>
           {options.map((c) => (

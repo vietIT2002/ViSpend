@@ -277,7 +277,7 @@ export const en = {
   "budgets.categoryBudgetsHint": "Set each limit. Spent and remaining update from transactions.",
   "budgets.total": "{amount} total",
   "budgets.chooseCategory": "Choose expense category…",
-  "budgets.budgetAmount": "Budget amount",
+  "budgets.budgetAmount": "Amount",
   "budgets.budgetLabel": "Budget",
   "budgets.removeAria": "Remove budget",
   "budgets.noBudgetsYet": "No category budgets yet. Add one above to start planning {month}.",

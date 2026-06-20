@@ -277,7 +277,7 @@ export const vi: Dict = {
   "budgets.categoryBudgetsHint": "Đặt hạn mức từng danh mục. Đã chi và còn lại cập nhật từ giao dịch.",
   "budgets.total": "Tổng {amount}",
   "budgets.chooseCategory": "Chọn danh mục chi…",
-  "budgets.budgetAmount": "Số tiền ngân sách",
+  "budgets.budgetAmount": "Số tiền",
   "budgets.budgetLabel": "Ngân sách",
   "budgets.removeAria": "Xoá ngân sách",
   "budgets.noBudgetsYet": "Chưa có ngân sách nào. Thêm ở trên để bắt đầu lập kế hoạch cho {month}.",
