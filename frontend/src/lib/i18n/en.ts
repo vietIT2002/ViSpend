@@ -407,6 +407,9 @@ export const en = {
   "scan.viewReceipt": "View receipt",
   "errors.receipt_storage_unconfigured": "Image storage is not set up yet.",
   "errors.receipt_not_found": "No image attached to this transaction.",
+  "errors.receipt_unavailable": "Could not load the receipt image.",
+  "errors.receipt_invalid_type": "Only JPG, PNG, or WebP images are allowed.",
+  "errors.receipt_too_large": "The image is too large (max 5 MB).",
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;

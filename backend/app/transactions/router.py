@@ -73,8 +73,9 @@ def parse(
 ) -> ParseSuggestion:
     fields = parse_text(body.text)
     category_id, confidence = (None, 0.0)
-    if fields.note:
-        category_id, confidence = suggest_category(session, current, fields.note)
+    text_for_class = fields.note or body.text
+    if text_for_class.strip():
+        category_id, confidence = suggest_category(session, current, text_for_class)
     return ParseSuggestion(
         type=fields.type,
         amount=fields.amount,
@@ -95,9 +96,14 @@ def upload_receipt(
     if not storage.configured():
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_storage_unconfigured")
     txn = get_owned_transaction(session, current, txn_id)
-    ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "jpg"
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in {"jpg", "jpeg", "png", "webp"}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "receipt_invalid_type")
+    data = file.file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "receipt_too_large")
     path = f"{current.id}/{txn.id}.{ext}"
-    storage.upload_receipt(path, file.file.read(), file.content_type or "image/jpeg")
+    storage.upload_receipt(path, data, file.content_type or "image/jpeg")
     return set_receipt_path(session, current, txn_id, path)
 
 
@@ -110,7 +116,12 @@ def get_receipt(
     txn = get_owned_transaction(session, current, txn_id)
     if not txn.receipt_path:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "receipt_not_found")
-    return {"url": storage.signed_url(txn.receipt_path)}
+    if not storage.configured():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_storage_unconfigured")
+    try:
+        return {"url": storage.signed_url(txn.receipt_path)}
+    except Exception:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_unavailable")
 
 
 @router.get("/{txn_id}", response_model=TransactionOut)

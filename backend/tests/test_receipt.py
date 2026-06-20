@@ -48,3 +48,26 @@ def test_get_receipt_404_when_absent(auth_client):
         "type": "expense", "amount": "10000", "category_id": cid,
         "occurred_on": "2026-06-20", "method": "cash"}).json()
     assert auth_client.get(f"/api/transactions/{txn['id']}/receipt").status_code == 404
+
+
+def test_upload_receipt_unconfigured_returns_503(auth_client, monkeypatch):
+    from app.intake import storage
+    monkeypatch.setattr(storage, "configured", lambda: False)
+    cid = next(c["id"] for c in auth_client.get("/api/categories").json() if c["type"] == "expense")
+    txn = auth_client.post("/api/transactions", json={
+        "type": "expense", "amount": "10000", "category_id": cid,
+        "occurred_on": "2026-06-20", "method": "cash"}).json()
+    files = {"file": ("r.jpg", io.BytesIO(b"\xff\xd8\xff"), "image/jpeg")}
+    assert auth_client.post(f"/api/transactions/{txn['id']}/receipt", files=files).status_code == 503
+
+
+def test_upload_receipt_rejects_non_image(auth_client, monkeypatch):
+    from app.intake import storage
+    monkeypatch.setattr(storage, "configured", lambda: True)
+    monkeypatch.setattr(storage, "upload_receipt", lambda path, data, content_type: None)
+    cid = next(c["id"] for c in auth_client.get("/api/categories").json() if c["type"] == "expense")
+    txn = auth_client.post("/api/transactions", json={
+        "type": "expense", "amount": "10000", "category_id": cid,
+        "occurred_on": "2026-06-20", "method": "cash"}).json()
+    files = {"file": ("r.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")}
+    assert auth_client.post(f"/api/transactions/{txn['id']}/receipt", files=files).status_code == 422
