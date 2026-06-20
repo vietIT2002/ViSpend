@@ -39,6 +39,7 @@ export function TransactionsPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [prefill, setPrefill] = useState<ParseSuggestion | null>(null);
   const [pendingImage, setPendingImage] = useState<Blob | null>(null);
+  const [ocrText, setOcrText] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useTransactions({ ...filter, page, page_size: PAGE_SIZE });
@@ -76,6 +77,7 @@ export function TransactionsPage() {
       const { compressImage, recognizeImage } = await import("./ocr");
       const compressed = await compressImage(file);
       const text = await recognizeImage(compressed, setScanProgress);
+      setOcrText(text);
       const suggestion = await parseText.mutateAsync(text);
       setPrefill(suggestion);
       setPendingImage(compressed);
@@ -85,6 +87,7 @@ export function TransactionsPage() {
     } catch {
       setPrefill(null);
       setPendingImage(null);
+      setOcrText(null);
       alert(t("scan.failed"));
     } finally {
       setScanning(false);
@@ -302,11 +305,12 @@ export function TransactionsPage() {
 
       <TransactionModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setPrefill(null); setPendingImage(null); }}
+        onClose={() => { setModalOpen(false); setPrefill(null); setPendingImage(null); setOcrText(null); }}
         editing={editing}
         defaultType={newType}
         prefill={prefill ?? undefined}
         pendingImage={pendingImage}
+        ocrText={ocrText ?? undefined}
       />
 
       <Modal open={Boolean(viewing)} onClose={() => setViewing(null)} title={t("txn.details")}>

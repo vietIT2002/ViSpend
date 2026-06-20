@@ -40,6 +40,7 @@ export interface ParseSuggestion {
   occurred_on: string;
   category_id: string | null;
   note: string | null;
+  method: PayMethod;
   confidence: number;
 }
 

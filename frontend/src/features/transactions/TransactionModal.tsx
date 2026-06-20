@@ -34,6 +34,7 @@ export function TransactionModal({
   defaultType = "expense",
   prefill,
   pendingImage,
+  ocrText,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,6 +42,7 @@ export function TransactionModal({
   defaultType?: TxnType;
   prefill?: ParseSuggestion;
   pendingImage?: Blob | null;
+  ocrText?: string;
 }) {
   const { data: cats = [] } = useCategories();
   const createCat = useCreateCategory();
@@ -80,7 +82,7 @@ export function TransactionModal({
         amount: prefill.amount ?? "",
         category_id: prefill.category_id ?? "",
         occurred_on: prefill.occurred_on,
-        method: "cash",
+        method: prefill.method ?? "cash",
         note: prefill.note ?? "",
       });
     } else {
@@ -104,11 +106,9 @@ export function TransactionModal({
     if (isEdit && editing) {
       update.mutate({ id: editing.id, body: data }, { onSuccess: onClose });
     } else {
-      create.mutate(data, {
+      create.mutate({ ...data, ocr_text: ocrText }, {
         onSuccess: (created: Transaction) => {
-          if (pendingImage) {
-            uploadReceipt.mutate({ id: created.id, file: pendingImage }); // background
-          }
+          if (pendingImage) uploadReceipt.mutate({ id: created.id, file: pendingImage });
           onClose();
         },
       });
