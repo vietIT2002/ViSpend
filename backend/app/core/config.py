@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     cors_origins: str = "http://localhost:5173"
     google_client_id: str = "486347902494-mruf16d1kl8n3u8hqv5qtohtd850ib6j.apps.googleusercontent.com"
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+    supabase_bucket: str = "receipts"
 
     @property
     def cors_origins_list(self) -> list[str]:

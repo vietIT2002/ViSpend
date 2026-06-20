@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.categories.service import get_accessible_category
+from app.intake import classifier
 from app.models import PayMethod, Transaction, TxnType, User
 from app.schemas import TransactionCreate, TransactionUpdate
 
@@ -73,6 +74,11 @@ def create_transaction(session: Session, user: User, body: TransactionCreate) ->
     session.add(txn)
     session.commit()
     session.refresh(txn)
+    if txn.note and txn.category_id:
+        try:
+            classifier.learn(session, user, txn.note, txn.category_id)
+        except Exception:
+            pass  # training must never block the transaction
     return txn
 
 
@@ -93,6 +99,11 @@ def update_transaction(
     session.add(txn)
     session.commit()
     session.refresh(txn)
+    if txn.note and txn.category_id:
+        try:
+            classifier.learn(session, user, txn.note, txn.category_id)
+        except Exception:
+            pass  # training must never block the transaction
     return txn
 
 
@@ -101,3 +112,12 @@ def delete_transaction(session: Session, user: User, txn_id: uuid.UUID) -> None:
     _ensure_within_edit_window(txn)
     session.delete(txn)
     session.commit()
+
+
+def set_receipt_path(session: Session, user: User, txn_id: uuid.UUID, path: str) -> Transaction:
+    txn = get_owned_transaction(session, user, txn_id)
+    txn.receipt_path = path
+    session.add(txn)
+    session.commit()
+    session.refresh(txn)
+    return txn

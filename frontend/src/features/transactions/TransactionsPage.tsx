@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -9,12 +9,13 @@ import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { IconFlow, IconPencil, IconPlus, IconTrash } from "../../components/icons";
+import { api } from "../../lib/api";
 import { useCategoryLabel, useT } from "../../lib/i18n";
 import { vnd } from "../../lib/utils";
-import type { Transaction, TxnType } from "../../types";
+import type { ParseSuggestion, Transaction, TxnType } from "../../types";
 import { useCategories } from "../categories/hooks";
 import { TransactionModal } from "./TransactionModal";
-import { useDeleteTransaction, useTransactions, type TxnFilter } from "./hooks";
+import { useDeleteTransaction, useParseText, useTransactions, type TxnFilter } from "./hooks";
 
 const PAGE_SIZE = 20;
 
@@ -34,10 +35,16 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [newType, setNewType] = useState<TxnType>("expense");
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [prefill, setPrefill] = useState<ParseSuggestion | null>(null);
+  const [pendingImage, setPendingImage] = useState<Blob | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useTransactions({ ...filter, page, page_size: PAGE_SIZE });
   const { data: cats = [] } = useCategories();
   const del = useDeleteTransaction();
+  const parseText = useParseText();
   const t = useT();
   const categoryLabel = useCategoryLabel();
   const catName = (id: string) => {
@@ -58,6 +65,31 @@ export function TransactionsPage() {
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+
+  async function onScanFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setScanning(true);
+    setScanProgress(0);
+    try {
+      const { compressImage, recognizeImage } = await import("./ocr");
+      const compressed = await compressImage(file);
+      const text = await recognizeImage(compressed, setScanProgress);
+      const suggestion = await parseText.mutateAsync(text);
+      setPrefill(suggestion);
+      setPendingImage(compressed);
+      setEditing(null);
+      setNewType(suggestion.type);
+      setModalOpen(true);
+    } catch {
+      setPrefill(null);
+      setPendingImage(null);
+      alert(t("scan.failed"));
+    } finally {
+      setScanning(false);
+    }
+  }
 
   function openAdd(type: TxnType) {
     setEditing(null);
@@ -84,6 +116,10 @@ export function TransactionsPage() {
           </Button>
           <Button variant="secondary" onClick={() => openAdd("income")}>
             <IconPlus size={16} /> {t("type.income")}
+          </Button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={onScanFile} />
+          <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={scanning}>
+            {scanning ? `${t("scan.reading")} ${Math.round(scanProgress * 100)}%` : t("scan.button")}
           </Button>
         </div>
       </header>
@@ -266,9 +302,11 @@ export function TransactionsPage() {
 
       <TransactionModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setPrefill(null); setPendingImage(null); }}
         editing={editing}
         defaultType={newType}
+        prefill={prefill ?? undefined}
+        pendingImage={pendingImage}
       />
 
       <Modal open={Boolean(viewing)} onClose={() => setViewing(null)} title={t("txn.details")}>
@@ -290,7 +328,20 @@ export function TransactionsPage() {
               label={t("txn.detailRecorded")}
               value={<span className="nums">{format(new Date(viewing.created_at), "dd MMM yyyy, HH:mm")}</span>}
             />
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex flex-wrap justify-end gap-2 pt-4">
+              {viewing.has_receipt && (
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    const { url } = await api.get<{ url: string }>(
+                      `/transactions/${viewing.id}/receipt`,
+                    );
+                    window.open(url, "_blank", "noopener");
+                  }}
+                >
+                  {t("scan.viewReceipt")}
+                </Button>
+              )}
               {!isLocked(viewing) && (
                 <Button
                   variant="secondary"

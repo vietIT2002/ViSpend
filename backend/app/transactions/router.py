@@ -1,14 +1,19 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlmodel import Session
 
 from app.core.db import get_session
 from app.core.security import get_current_user
+from app.intake import storage
+from app.intake.classifier import suggest_category
+from app.intake.parsing import parse_text
 from app.models import PayMethod, TxnType, User
 from app.schemas import (
     PaginatedTransactions,
+    ParseRequest,
+    ParseSuggestion,
     TransactionCreate,
     TransactionOut,
     TransactionUpdate,
@@ -18,6 +23,7 @@ from app.transactions.service import (
     delete_transaction,
     get_owned_transaction,
     list_transactions,
+    set_receipt_path,
     update_transaction,
 )
 
@@ -57,6 +63,65 @@ def create(
     current: User = Depends(get_current_user),
 ) -> TransactionOut:
     return create_transaction(session, current, body)
+
+
+@router.post("/parse", response_model=ParseSuggestion)
+def parse(
+    body: ParseRequest,
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> ParseSuggestion:
+    fields = parse_text(body.text)
+    category_id, confidence = (None, 0.0)
+    text_for_class = fields.note or body.text
+    if text_for_class.strip():
+        category_id, confidence = suggest_category(session, current, text_for_class)
+    return ParseSuggestion(
+        type=fields.type,
+        amount=fields.amount,
+        occurred_on=fields.occurred_on,
+        category_id=category_id,
+        note=fields.note,
+        confidence=confidence,
+    )
+
+
+@router.post("/{txn_id}/receipt", response_model=TransactionOut)
+def upload_receipt(
+    txn_id: uuid.UUID,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> TransactionOut:
+    if not storage.configured():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_storage_unconfigured")
+    txn = get_owned_transaction(session, current, txn_id)
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if ext not in {"jpg", "jpeg", "png", "webp"}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "receipt_invalid_type")
+    data = file.file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "receipt_too_large")
+    path = f"{current.id}/{txn.id}.{ext}"
+    storage.upload_receipt(path, data, file.content_type or "image/jpeg")
+    return set_receipt_path(session, current, txn_id, path)
+
+
+@router.get("/{txn_id}/receipt")
+def get_receipt(
+    txn_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> dict:
+    txn = get_owned_transaction(session, current, txn_id)
+    if not txn.receipt_path:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "receipt_not_found")
+    if not storage.configured():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_storage_unconfigured")
+    try:
+        return {"url": storage.signed_url(txn.receipt_path)}
+    except Exception:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_unavailable")
 
 
 @router.get("/{txn_id}", response_model=TransactionOut)

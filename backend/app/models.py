@@ -67,8 +67,13 @@ class Transaction(SQLModel, table=True):
     occurred_on: date = Field(index=True)
     method: PayMethod = PayMethod.cash
     note: str | None = None
+    receipt_path: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
+
+    @property
+    def has_receipt(self) -> bool:
+        return self.receipt_path is not None
 
 
 class BudgetMonth(SQLModel, table=True):
@@ -94,4 +99,11 @@ class BudgetAllocation(SQLModel, table=True):
     category_id: uuid.UUID = Field(foreign_key="category.id", index=True)
     amount: Decimal = Field(max_digits=15, decimal_places=2)
     created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class CategoryClassifier(SQLModel, table=True):
+    # One incrementally-trained per-user category model (pickled sklearn estimator).
+    user_id: uuid.UUID = Field(foreign_key="user.id", primary_key=True)
+    model_blob: bytes
     updated_at: datetime = Field(default_factory=_now)
