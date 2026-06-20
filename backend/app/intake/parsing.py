@@ -4,21 +4,33 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from app.models import TxnType
+from app.intake.rules import merchant_label
+from app.models import PayMethod, TxnType
 
-# Number like 50,000 / 1.234.567 / 12000000 immediately before a VND marker.
+# Number before a VND marker (app/e-wallet screenshots).
 _AMOUNT_RE = re.compile(
     r"(?P<sign>[+-])?\s*(?P<num>\d{1,3}(?:[.,]\d{3})+|\d+)\s*(?:vnd|đ|d)\b",
     re.IGNORECASE,
 )
-# Words that label the amount actually paid / the grand total (diacritic-free).
-_TOTAL_HINTS = ("tra qua", "thanh toan", "thanh tien", "tong cong", "tong tien",
-                "tong", "thach toan", "total", "paid")
+# Grand-total / amount-paid line — number may be bare (paper receipts). Run on
+# deaccented text. Take the LAST match (totals sit at the bottom).
+_PAID_RE = re.compile(
+    r"(?:tong tien thanh toan|tong thanh toan|thanh toan|tra qua|tong cong|thanh tien)"
+    r"[^\d\n]{0,30}(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{4,})",
+    re.IGNORECASE,
+)
 _DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{4}))?\b")
 _NOTE_RE = re.compile(r"(?:nd|noi dung|ndung|content|cho)\s*[:\-]?\s*(?P<note>.+)", re.IGNORECASE)
 
 _INCOME_HINTS = ("nhan tien", "ghi co", "tra luong", "luong", "+ ")
 _EXPENSE_HINTS = ("thanh toan", "chuyen", "ghi no", "tt ", "mua")
+
+_METHOD_TRANSFER = ("shopeepay", "momo", "zalopay", "vnpay", "viettel money", "viettelpay",
+                    "moca", "chuyen khoan", " ck ", "internet banking", "ibanking", "napas",
+                    "qr", "vietcombank", "vcb", "techcombank", "mbbank", "acb", "bidv",
+                    "vietinbank", "vpbank", "tpbank", "sacombank", "agribank")
+_METHOD_CARD = ("the tin dung", "credit", "visa", "mastercard", "the ghi no", "debit")
+_METHOD_CASH = ("tien mat", "cash", "cod")
 
 
 @dataclass
@@ -27,6 +39,7 @@ class ParsedFields:
     amount: Decimal | None
     occurred_on: date
     note: str | None
+    method: PayMethod
 
 
 def _deaccent(s: str) -> str:
@@ -43,20 +56,15 @@ def _to_decimal(raw: str) -> Decimal | None:
 
 
 def _select_amount(text: str) -> tuple[Decimal | None, str | None]:
-    """Pick the amount and its sign. On multi-amount receipts (fare, discount,
-    total...), prefer the amount whose preceding text labels it as the total /
-    amount paid; otherwise fall back to the first amount found."""
+    # 1. Total/paid line (handles bare paper-receipt numbers). Last match = grand total.
+    paid = list(_PAID_RE.finditer(_deaccent(text)))
+    if paid:
+        return _to_decimal(paid[-1].group("num")), None
+    # 2. First currency-suffixed amount (app/e-wallet single-amount messages).
     matches = list(_AMOUNT_RE.finditer(text))
-    if not matches:
-        return None, None
-    # Prefer a total/paid-labelled amount; if several, take the last (usually the
-    # final amount charged). Look back a short window before each number.
-    labelled = [
-        m for m in matches
-        if any(h in _deaccent(text[max(0, m.start() - 35):m.start()]) for h in _TOTAL_HINTS)
-    ]
-    chosen = labelled[-1] if labelled else matches[0]
-    return _to_decimal(chosen.group("num")), chosen.group("sign")
+    if matches:
+        return _to_decimal(matches[0].group("num")), matches[0].group("sign")
+    return None, None
 
 
 def _detect_type(text: str, sign: str | None) -> TxnType:
@@ -70,6 +78,17 @@ def _detect_type(text: str, sign: str | None) -> TxnType:
     if any(h in low for h in _EXPENSE_HINTS):
         return TxnType.expense
     return TxnType.expense  # default
+
+
+def detect_method(text: str) -> PayMethod:
+    d = _deaccent(text)
+    if any(h in d for h in _METHOD_TRANSFER):
+        return PayMethod.transfer
+    if any(h in d for h in _METHOD_CARD):
+        return PayMethod.card
+    if any(h in d for h in _METHOD_CASH):
+        return PayMethod.cash
+    return PayMethod.cash  # default
 
 
 def _detect_date(text: str, today: date) -> date:
@@ -87,8 +106,10 @@ def _detect_date(text: str, today: date) -> date:
 def _detect_note(text: str) -> str | None:
     m = _NOTE_RE.search(text)
     if m:
-        return m.group("note").strip()[:255] or None
-    return None
+        note = m.group("note").strip()[:255]
+        if note:
+            return note
+    return merchant_label(text)  # fallback: known brand name
 
 
 def parse_text(text: str, today: date | None = None) -> ParsedFields:
@@ -99,4 +120,5 @@ def parse_text(text: str, today: date | None = None) -> ParsedFields:
         amount=amount,
         occurred_on=_detect_date(text, today),
         note=_detect_note(text),
+        method=detect_method(text),
     )

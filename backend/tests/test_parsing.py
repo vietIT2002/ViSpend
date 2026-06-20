@@ -53,3 +53,25 @@ def test_picks_total_paid_over_fare_on_multiamount_receipt():
     assert p.amount == Decimal("33000")  # not the 42.000 gross fare
     assert p.type == TxnType.expense
     assert p.occurred_on == date(2026, 6, 19)
+
+
+from app.models import PayMethod
+
+
+def test_paper_receipt_total_without_currency_suffix():
+    text = ("WinMart PHIEU TINH TIEN\nNam Duong Sot 20,200\nMoc Chau Sua 40,700\n"
+            "TONG GIA TRI DON 76,400\nTONG TIEN GIAM -3,100\nTONG TIEN THANH TOAN 73,300")
+    p = parse_text(text, today=TODAY)
+    assert p.amount == Decimal("73300")  # the paid total, bare number, no đ
+
+
+def test_detect_method_transfer_and_card_and_cash():
+    assert parse_text("Tra qua ShopeePay 33.000d", today=TODAY).method == PayMethod.transfer
+    assert parse_text("Thanh toan the Visa 500.000d", today=TODAY).method == PayMethod.card
+    assert parse_text("Tra tien mat 50.000d", today=TODAY).method == PayMethod.cash
+    assert parse_text("mua ca phe 35.000d", today=TODAY).method == PayMethod.cash  # default
+
+
+def test_note_fallback_to_merchant():
+    p = parse_text("WinMart PHIEU TINH TIEN ... TONG TIEN THANH TOAN 73,300", today=TODAY)
+    assert p.note == "WinMart"
