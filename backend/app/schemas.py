@@ -154,6 +154,7 @@ class TransactionOut(BaseModel):
     occurred_on: date
     method: PayMethod
     note: str | None
+    has_receipt: bool
     created_at: datetime
 
 
@@ -162,6 +163,19 @@ class PaginatedTransactions(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ParseRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+
+
+class ParseSuggestion(BaseModel):
+    type: TxnType
+    amount: Decimal | None = None
+    occurred_on: date
+    category_id: uuid.UUID | None = None
+    note: str | None = None
+    confidence: float  # 0..1 — how confident the category suggestion is
 
 
 class DashboardSummary(BaseModel):
