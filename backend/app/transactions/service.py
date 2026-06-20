@@ -112,3 +112,12 @@ def delete_transaction(session: Session, user: User, txn_id: uuid.UUID) -> None:
     _ensure_within_edit_window(txn)
     session.delete(txn)
     session.commit()
+
+
+def set_receipt_path(session: Session, user: User, txn_id: uuid.UUID, path: str) -> Transaction:
+    txn = get_owned_transaction(session, user, txn_id)
+    txn.receipt_path = path
+    session.add(txn)
+    session.commit()
+    session.refresh(txn)
+    return txn
