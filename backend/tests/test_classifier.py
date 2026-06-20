@@ -74,3 +74,19 @@ def test_ml_generalizes_after_training(session):
     # Shares the "com"/"tam" tokens with the food examples -> ML generalizes to food.
     cid, conf = classifier.suggest_category(session, u, "com tam ga")
     assert cid == food.id
+
+
+def test_create_transaction_trains_model(auth_client):
+    cats = auth_client.get("/api/categories").json()
+    food = next(c for c in cats if c["type"] == "expense")
+    other = next(c for c in cats if c["type"] == "expense" and c["id"] != food["id"])
+    for note in ["pho bo", "com tam", "bun cha"]:
+        auth_client.post("/api/transactions", json={
+            "type": "expense", "amount": "30000", "category_id": food["id"],
+            "occurred_on": "2026-06-10", "method": "cash", "note": note})
+    for note in ["grab bike", "taxi", "xe bus"]:
+        auth_client.post("/api/transactions", json={
+            "type": "expense", "amount": "20000", "category_id": other["id"],
+            "occurred_on": "2026-06-10", "method": "cash", "note": note})
+    r = auth_client.post("/api/transactions/parse", json={"text": "ND: com tam suon nuong"})
+    assert r.json()["category_id"] == food["id"]
