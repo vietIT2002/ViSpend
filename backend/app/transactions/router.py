@@ -6,9 +6,13 @@ from sqlmodel import Session
 
 from app.core.db import get_session
 from app.core.security import get_current_user
+from app.intake.classifier import suggest_category
+from app.intake.parsing import parse_text
 from app.models import PayMethod, TxnType, User
 from app.schemas import (
     PaginatedTransactions,
+    ParseRequest,
+    ParseSuggestion,
     TransactionCreate,
     TransactionOut,
     TransactionUpdate,
@@ -57,6 +61,26 @@ def create(
     current: User = Depends(get_current_user),
 ) -> TransactionOut:
     return create_transaction(session, current, body)
+
+
+@router.post("/parse", response_model=ParseSuggestion)
+def parse(
+    body: ParseRequest,
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> ParseSuggestion:
+    fields = parse_text(body.text)
+    category_id, confidence = (None, 0.0)
+    if fields.note:
+        category_id, confidence = suggest_category(session, current, fields.note)
+    return ParseSuggestion(
+        type=fields.type,
+        amount=fields.amount,
+        occurred_on=fields.occurred_on,
+        category_id=category_id,
+        note=fields.note,
+        confidence=confidence,
+    )
 
 
 @router.get("/{txn_id}", response_model=TransactionOut)
