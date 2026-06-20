@@ -27,9 +27,14 @@ def _get_vect():
 
 def _labeled_history(session: Session, user_id: uuid.UUID) -> list[tuple[str, str]]:
     rows = session.exec(
-        select(Transaction).where(Transaction.user_id == user_id, Transaction.note.is_not(None))
+        select(Transaction).where(Transaction.user_id == user_id)
     ).all()
-    return [(t.note, str(t.category_id)) for t in rows if t.note and t.note.strip()]
+    out: list[tuple[str, str]] = []
+    for t in rows:
+        text = (t.ocr_text or t.note or "").strip()
+        if text:
+            out.append((text, str(t.category_id)))
+    return out
 
 
 def _load(session: Session, user_id: uuid.UUID):

@@ -107,3 +107,30 @@ def test_merchant_label_known_brands():
 
 def test_merchant_label_unknown_returns_none():
     assert merchant_label("cua hang abcxyz la") is None
+
+
+def test_learns_from_ocr_text_when_note_empty(session):
+    from datetime import date as _date
+    from app.models import Category, Transaction, TxnType, User
+    from app.core.security import hash_password
+    from app.intake import classifier as clf
+
+    u = User(username="ocrlearner", hashed_password=hash_password("Password123!"))
+    session.add(u); session.commit(); session.refresh(u)
+    food = Category(user_id=u.id, name="Food", type=TxnType.expense); session.add(food)
+    trans = Category(user_id=u.id, name="Transport", type=TxnType.expense); session.add(trans)
+    session.commit(); session.refresh(food); session.refresh(trans)
+
+    def scan(ocr, cat):
+        t = Transaction(user_id=u.id, type=TxnType.expense, amount=10000,
+                        category_id=cat.id, occurred_on=_date(2026, 6, 1), note=None, ocr_text=ocr)
+        session.add(t); session.commit()
+        clf.learn(session, u, t.ocr_text or (t.note or ""), t.category_id)
+
+    for ocr in ["WinMart sieu thi rau cu", "Bach Hoa Xanh thit ca trung", "Co.opmart gia vi"]:
+        scan(ocr, food)
+    for ocr in ["beBike chuyen di Ga", "Grab bike di lam", "Be car ve nha"]:
+        scan(ocr, trans)
+
+    cid, conf = clf.suggest_category(session, u, "WinMart mua rau")
+    assert cid == food.id  # learned from OCR text even though note was empty
