@@ -25,12 +25,15 @@ _NOTE_RE = re.compile(r"(?:nd|noi dung|ndung|content|cho)\s*[:\-]?\s*(?P<note>.+
 _INCOME_HINTS = ("nhan tien", "ghi co", "tra luong", "luong", "+ ")
 _EXPENSE_HINTS = ("thanh toan", "chuyen", "ghi no", "tt ", "mua")
 
-_METHOD_TRANSFER = ("shopeepay", "momo", "zalopay", "vnpay", "viettel money", "viettelpay",
-                    "moca", "chuyen khoan", " ck ", "internet banking", "ibanking", "napas",
-                    "qr", "vietcombank", "vcb", "techcombank", "mbbank", "acb", "bidv",
-                    "vietinbank", "vpbank", "tpbank", "sacombank", "agribank")
-_METHOD_CARD = ("the tin dung", "credit", "visa", "mastercard", "the ghi no", "debit")
-_METHOD_CASH = ("tien mat", "cash", "cod")
+# Word-boundary anchored so short bank codes don't match inside ordinary words
+# (e.g. "acb" must not match "macbook", "qr" must not match "square").
+_METHOD_TRANSFER_RE = re.compile(
+    r"\b(?:shopeepay|momo|zalopay|vnpay|viettel money|viettelpay|moca|chuyen khoan|ck|"
+    r"internet banking|ibanking|napas|qr|vietcombank|vcb|techcombank|mbbank|acb|bidv|"
+    r"vietinbank|vpbank|tpbank|sacombank|agribank)\b"
+)
+_METHOD_CARD_RE = re.compile(r"\b(?:the tin dung|credit|visa|mastercard|the ghi no|debit)\b")
+_METHOD_CASH_RE = re.compile(r"\b(?:tien mat|cash|cod)\b")
 
 
 @dataclass
@@ -82,11 +85,11 @@ def _detect_type(text: str, sign: str | None) -> TxnType:
 
 def detect_method(text: str) -> PayMethod:
     d = _deaccent(text)
-    if any(h in d for h in _METHOD_TRANSFER):
+    if _METHOD_TRANSFER_RE.search(d):
         return PayMethod.transfer
-    if any(h in d for h in _METHOD_CARD):
+    if _METHOD_CARD_RE.search(d):
         return PayMethod.card
-    if any(h in d for h in _METHOD_CASH):
+    if _METHOD_CASH_RE.search(d):
         return PayMethod.cash
     return PayMethod.cash  # default
 

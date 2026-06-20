@@ -72,6 +72,13 @@ def test_detect_method_transfer_and_card_and_cash():
     assert parse_text("mua ca phe 35.000d", today=TODAY).method == PayMethod.cash  # default
 
 
+def test_method_no_substring_false_positive():
+    # "acb"/"qr" must not match inside ordinary words; plain currency amount still parses.
+    p = parse_text("mua macbook 25.000.000d", today=TODAY)
+    assert p.method == PayMethod.cash
+    assert p.amount == Decimal("25000000")
+
+
 def test_note_fallback_to_merchant():
     p = parse_text("WinMart PHIEU TINH TIEN ... TONG TIEN THANH TOAN 73,300", today=TODAY)
     assert p.note == "WinMart"
