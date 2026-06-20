@@ -9,6 +9,7 @@ import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { IconFlow, IconPencil, IconPlus, IconTrash } from "../../components/icons";
+import { api } from "../../lib/api";
 import { useCategoryLabel, useT } from "../../lib/i18n";
 import { vnd } from "../../lib/utils";
 import type { ParseSuggestion, Transaction, TxnType } from "../../types";
@@ -327,7 +328,20 @@ export function TransactionsPage() {
               label={t("txn.detailRecorded")}
               value={<span className="nums">{format(new Date(viewing.created_at), "dd MMM yyyy, HH:mm")}</span>}
             />
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex flex-wrap justify-end gap-2 pt-4">
+              {viewing.has_receipt && (
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    const { url } = await api.get<{ url: string }>(
+                      `/transactions/${viewing.id}/receipt`,
+                    );
+                    window.open(url, "_blank", "noopener");
+                  }}
+                >
+                  {t("scan.viewReceipt")}
+                </Button>
+              )}
               {!isLocked(viewing) && (
                 <Button
                   variant="secondary"
