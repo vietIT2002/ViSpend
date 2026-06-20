@@ -22,7 +22,12 @@ _PAID_RE = re.compile(
     r"[^\d]{0,40}(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{4,})",
     re.IGNORECASE,
 )
-_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{4}))?\b")
+# Dates on receipts / transfers come in many forms. Day-month-year with "/" or
+# "-" (year optional, 2 or 4 digits); dot form requires a 4-digit year so it
+# can't swallow money like 12.000.000; and ISO yyyy-mm-dd. First valid date wins.
+_DATE_DMY_RE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b")
+_DATE_DOT_RE = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
+_DATE_ISO_RE = re.compile(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b")
 _NOTE_RE = re.compile(r"(?:nd|noi dung|ndung|content|cho)\s*[:\-]?\s*(?P<note>.+)", re.IGNORECASE)
 
 _INCOME_HINTS = ("nhan tien", "ghi co", "tra luong", "luong", "+ ")
@@ -98,15 +103,28 @@ def detect_method(text: str) -> PayMethod:
 
 
 def _detect_date(text: str, today: date) -> date:
-    m = _DATE_RE.search(text)
-    if not m:
-        return today
-    day, month = int(m.group(1)), int(m.group(2))
-    year = int(m.group(3)) if m.group(3) else today.year
+    # Try ISO first (yyyy-mm-dd), then dotted (dd.mm.yyyy), then dd/mm[/yy[yy]].
+    iso = _DATE_ISO_RE.search(text)
+    if iso:
+        d = _build_date(int(iso.group(3)), int(iso.group(2)), int(iso.group(1)), today)
+        if d:
+            return d
+    for rx in (_DATE_DOT_RE, _DATE_DMY_RE):
+        for m in rx.finditer(text):
+            year = int(m.group(3)) if m.group(3) else today.year
+            d = _build_date(int(m.group(1)), int(m.group(2)), year, today)
+            if d:
+                return d
+    return today
+
+
+def _build_date(day: int, month: int, year: int, today: date) -> date | None:
+    if year < 100:  # two-digit year -> 20xx
+        year += 2000
     try:
         return date(year, month, day)
     except ValueError:
-        return today
+        return None
 
 
 def _detect_note(text: str) -> str | None:

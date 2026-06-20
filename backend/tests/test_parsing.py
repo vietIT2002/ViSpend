@@ -35,6 +35,19 @@ def test_defaults_today_when_no_date():
     assert p.occurred_on == TODAY
 
 
+def test_parses_date_dash_dot_iso_and_two_digit_year():
+    assert parse_text("Ngay 19-06-2026 15:37", today=TODAY).occurred_on == date(2026, 6, 19)
+    assert parse_text("Ngay 19.06.2026", today=TODAY).occurred_on == date(2026, 6, 19)
+    assert parse_text("2026-06-19 hoa don", today=TODAY).occurred_on == date(2026, 6, 19)
+    assert parse_text("Ngay 19/06/26", today=TODAY).occurred_on == date(2026, 6, 19)
+
+
+def test_date_detection_ignores_money_and_invalid():
+    # Money like 12.000.000d and 42.000 must not be read as a date.
+    assert parse_text("Thanh toan 12.000.000d", today=TODAY).occurred_on == TODAY
+    assert parse_text("Cuoc phi 42.000d", today=TODAY).occurred_on == TODAY
+
+
 def test_no_amount_returns_none():
     p = parse_text("khong co so tien o day", today=TODAY)
     assert p.amount is None
