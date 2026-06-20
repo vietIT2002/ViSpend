@@ -72,16 +72,14 @@ def parse(
     current: User = Depends(get_current_user),
 ) -> ParseSuggestion:
     fields = parse_text(body.text)
-    category_id, confidence = (None, 0.0)
-    text_for_class = fields.note or body.text
-    if text_for_class.strip():
-        category_id, confidence = suggest_category(session, current, text_for_class)
+    category_id, confidence = suggest_category(session, current, body.text)
     return ParseSuggestion(
         type=fields.type,
         amount=fields.amount,
         occurred_on=fields.occurred_on,
         category_id=category_id,
         note=fields.note,
+        method=fields.method,
         confidence=confidence,
     )
 

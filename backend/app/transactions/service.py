@@ -74,9 +74,9 @@ def create_transaction(session: Session, user: User, body: TransactionCreate) ->
     session.add(txn)
     session.commit()
     session.refresh(txn)
-    if txn.note and txn.category_id:
+    if txn.category_id and (txn.ocr_text or txn.note):
         try:
-            classifier.learn(session, user, txn.note, txn.category_id)
+            classifier.learn(session, user, txn.ocr_text or txn.note, txn.category_id)
         except Exception:
             pass  # training must never block the transaction
     return txn
@@ -99,9 +99,9 @@ def update_transaction(
     session.add(txn)
     session.commit()
     session.refresh(txn)
-    if txn.note and txn.category_id:
+    if txn.category_id and (txn.ocr_text or txn.note):
         try:
-            classifier.learn(session, user, txn.note, txn.category_id)
+            classifier.learn(session, user, txn.ocr_text or txn.note, txn.category_id)
         except Exception:
             pass  # training must never block the transaction
     return txn
