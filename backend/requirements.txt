@@ -12,3 +12,4 @@ email-validator==2.3.0
 pytest==9.0.3
 pytest-asyncio==1.4.0
 httpx==0.28.1
+scikit-learn==1.7.2
