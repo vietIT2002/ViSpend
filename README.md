@@ -1,118 +1,63 @@
 # ViSpend
 
-ViSpend is a personal expense management web app for recording income and expenses, organizing transactions by category, and viewing clear cash-flow insights.
+> A personal expense manager that turns a photo of a receipt into a ready-to-save transaction — and learns your categories as you go. Bilingual (English / Tiếng Việt), free to run.
 
-The app is split into a FastAPI backend and a React/Vite frontend. The backend owns authentication, authorization, persistence, and aggregation logic. The frontend provides the responsive product interface.
+ViSpend records income and expenses, organizes them by category, tracks monthly budgets,
+and shows clear cash‑flow insights. It is split into a **FastAPI** backend (auth, data,
+aggregation, the receipt pipeline) and a **React + Vite** frontend.
 
-## Features
+---
 
-- Email/password registration and login with JWT authentication
-- Protected user-specific transactions and categories
-- Manual income and expense entry
-- Inline custom category creation while recording a transaction
-- Category management with icons and colors
-- Dashboard summary for income, expenses, and net balance
-- Period selector for this month, last month, 3 months, 6 months, and custom ranges
-- Category spend charts, spending mix pie chart, and cash-flow bar chart
-- Responsive UI for desktop and mobile
+## Highlights
 
-## Tech Stack
+- 📸 **Scan a receipt or transfer screenshot** → the form is pre‑filled (amount, date,
+  type, category, method, note) for you to review and save. OCR runs **in your browser**
+  (`tesseract.js`) — free, private, no API keys.
+- 🧠 **Self‑learning categories** — every time you save or correct a transaction, a
+  per‑user model learns "this merchant/text → this category". It gets more accurate the
+  more you use it. Cold start is covered by built‑in keyword rules.
+- 🌐 **Bilingual UI (EN / VI)** — switch language anytime; the choice is saved to your
+  profile. Default categories are localized.
+- 🧾 **Budgets** — per‑category monthly limits with safe/watch/tight/over alerts, "days
+  left" and daily‑pace hints, and one‑click copy from last month.
+- 📊 **Dashboard insights** — net balance, income/expense, savings rate, cash‑flow and
+  category charts, weekly pattern, top spending days, and recent activity.
+- 🔐 **Accounts** — email/username + password or Google sign‑in, JWT auth, rate limiting.
 
-### Frontend
+> The receipt reader is free and heuristic, so always glance at the pre‑filled form before
+> saving — nothing is created automatically. The read/classify layer is pluggable, so a
+> vision LLM can be added later without changing the UI.
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS v4
-- TanStack Query
-- React Hook Form
-- Zod
-- Recharts
-- React Router
+## Tech stack
 
-### Backend
+**Frontend:** React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query ·
+React Hook Form · Zod · Recharts · React Router · tesseract.js
 
-- Python
-- FastAPI
-- SQLModel / SQLAlchemy
-- PostgreSQL
-- Alembic
-- JWT auth with `python-jose`
-- Password hashing with `passlib[argon2]`
-- SlowAPI rate limiting
-- Pytest
+**Backend:** Python · FastAPI · SQLModel / SQLAlchemy · PostgreSQL · Alembic ·
+scikit‑learn (category learning) · JWT (`python-jose`) · `passlib[argon2]` · SlowAPI · Pytest
 
-## Project Structure
+---
 
-```text
-backend/
-  app/
-    auth/
-    budgets/
-    categories/
-    core/
-    dashboard/
-    transactions/
-    main.py
-    models.py
-    schemas.py
-  alembic/
-  tests/
-  requirements.txt
+## Quick start
 
-frontend/
-  src/
-    components/
-    features/
-    lib/
-    types/
-    App.tsx
-    main.tsx
-  package.json
-```
+Prerequisites: **Python 3.12**, **Node 18+**, and a PostgreSQL database
+(local, or a free [Supabase](https://supabase.com) project).
 
-## Environment Variables
-
-Create `backend/.env` from `backend/.env.example`.
-
-```env
-DATABASE_URL=postgresql+psycopg://postgres:<url-encoded-password>@<host>:5432/postgres?sslmode=require
-JWT_SECRET=replace-with-a-strong-secret
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-CORS_ORIGINS=http://localhost:5173
-```
-
-For Supabase, use the PostgreSQL connection string from:
-
-```text
-Supabase Dashboard -> Project Settings -> Database -> Connection string
-```
-
-Use the Transaction Pooler connection string if your local network does not support direct IPv6 database connections.
-
-The frontend defaults to calling `/api`, which Vite proxies to the backend during local development.
-
-## Local Development
-
-### Backend
+### 1. Backend
 
 ```powershell
 cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-Copy-Item .env.example .env
+Copy-Item .env.example .env           # then edit .env (see below)
+python -m alembic upgrade head        # create / update the database schema
 uvicorn app.main:app --reload --port 8080
 ```
 
-Health check:
+Health check: <http://127.0.0.1:8080/api/health> → `{"status":"ok"}`
 
-```text
-http://127.0.0.1:8080/api/health
-```
-
-### Frontend
+### 2. Frontend
 
 ```powershell
 cd frontend
@@ -120,71 +65,108 @@ npm install
 npm run dev
 ```
 
-Open:
+Open <http://localhost:5173>. In development Vite proxies `/api` to the backend, so no
+extra config is needed.
 
-```text
-http://localhost:5173
-```
+---
 
-## Verification
-
-Run backend tests:
-
-```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-python -m pytest -v
-```
-
-Build frontend:
-
-```powershell
-cd frontend
-npm run build
-```
-
-## Deployment Notes
-
-### Backend
-
-The repository includes `render.yaml` for deploying the FastAPI backend as a Render Blueprint.
-
-Required Render environment variables:
-
-- `DATABASE_URL`: Supabase Transaction Pooler URL, using the `postgresql+psycopg://` scheme.
-- `JWT_SECRET`: strong random secret. The blueprint can generate this automatically.
-- `JWT_ALGORITHM`: `HS256`.
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: `15`.
-- `CORS_ORIGINS`: deployed frontend origin, for example `https://vispend.vercel.app`.
-
-Render start command:
-
-```bash
-python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-### Frontend
-
-The frontend is a Vite SPA. The repository includes `frontend/vercel.json` for Vercel.
-
-When importing the repository in Vercel:
-
-- Set the project root directory to `frontend`.
-- Set `VITE_API_URL` to the deployed backend API base URL.
+## Environment variables (`backend/.env`)
 
 ```env
-VITE_API_URL=https://your-api-domain.com/api
+# Required
+DATABASE_URL=postgresql+psycopg://postgres:<url-encoded-password>@<host>:5432/postgres?sslmode=require
+JWT_SECRET=replace-with-a-strong-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+CORS_ORIGINS=http://localhost:5173
+
+# Optional — only needed to store/view receipt images (Supabase Storage)
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_KEY=<service_role / sb_secret_ key>   # server-side only, never in the frontend
+SUPABASE_BUCKET=receipts
 ```
 
-After Vercel provides the frontend domain, add that domain to the backend `CORS_ORIGINS` value.
+- For Supabase Postgres, copy the connection string from
+  **Project Settings → Database → Connection string** (use the Transaction Pooler URL if
+  your network has no direct IPv6).
+- Receipt **scanning + auto‑categorization work without Supabase.** The Supabase variables
+  are only for **saving/viewing the original image**; create a **private** Storage bucket
+  named to match `SUPABASE_BUCKET`. Without them, image upload returns a clear
+  "storage not configured" message and everything else keeps working.
 
-## Security Notes
+---
 
-- Do not commit `.env`, local databases, logs, or API keys.
-- Use a strong production `JWT_SECRET`.
-- Use HTTPS in production.
-- Restrict `CORS_ORIGINS` to trusted frontend domains.
-- Rotate any credential that may have been shared in chat or logs.
+## How the receipt feature works
+
+```
+image ─▶ tesseract.js (browser OCR) ─▶ POST /api/transactions/parse
+            │                                   │
+            │                       regex: amount · date · type · method · note
+            │                       classify category: history → ML → keyword rules
+            ▼                                   ▼
+   raw OCR text kept              pre-filled "New transaction" modal (you review)
+            │                                   │ Save
+            └──────────────▶ transaction stored (with OCR text) ──▶ model trains on it
+                                                                      (gets smarter)
+```
+
+- **Amount** handles e‑wallet screenshots (`33.000đ`) and paper receipts with bare totals
+  by anchoring on "Tổng tiền thanh toán / Thanh toán / Trả qua".
+- **Category** prefers an exact match from your history, then a per‑user scikit‑learn
+  model, then keyword rules (e.g. *Highlands* → Food, *Grab* → Transport, *WinMart* →
+  Shopping); otherwise it’s left blank for you to choose — and your choice is learned.
+- **Method** is inferred from wallet/bank keywords (ShopeePay/MoMo/CK/bank → Transfer,
+  Visa/card → Card, else Cash).
+
+---
+
+## Project structure
+
+```text
+backend/
+  app/
+    auth/  budgets/  categories/  dashboard/  transactions/
+    intake/        # OCR-text parsing, keyword rules, self-learning classifier, storage
+    core/  main.py  models.py  schemas.py
+  alembic/         # database migrations
+  tests/
+frontend/
+  src/
+    components/  features/  lib/  lib/i18n/  types/
+```
+
+---
+
+## Testing & build
+
+```powershell
+# Backend tests
+cd backend; .\.venv\Scripts\Activate.ps1; python -m pytest -v
+
+# Frontend production build (also type-checks)
+cd frontend; npm run build
+```
+
+---
+
+## Deployment
+
+- **Backend (Render):** the repo includes `render.yaml`. Set `DATABASE_URL`, `JWT_SECRET`,
+  `CORS_ORIGINS` (your frontend origin), and the optional `SUPABASE_*` vars. The start
+  command runs `alembic upgrade head` then launches Uvicorn.
+- **Frontend (Vercel):** set the project root to `frontend` and `VITE_API_URL` to your
+  deployed API base URL (e.g. `https://your-api.onrender.com/api`); then add that frontend
+  domain to the backend `CORS_ORIGINS`.
+
+---
+
+## Contributing / for newcomers
+
+- Backend changes follow TDD — add a test under `backend/tests/` and run `pytest`.
+- Frontend strings go through the i18n dictionaries (`frontend/src/lib/i18n/en.ts` is the
+  source of truth; `vi.ts` must mirror it or the build fails).
+- Keep secrets out of the repo and out of chats/logs; rotate anything that leaks.
+- Run the backend tests and `npm run build` before opening a PR.
 
 ## License
 
