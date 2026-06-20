@@ -34,6 +34,7 @@ export function TransactionModal({
   defaultType = "expense",
   prefill,
   pendingImage,
+  pendingHash,
   ocrText,
 }: {
   open: boolean;
@@ -42,6 +43,7 @@ export function TransactionModal({
   defaultType?: TxnType;
   prefill?: ParseSuggestion;
   pendingImage?: Blob | null;
+  pendingHash?: string;
   ocrText?: string;
 }) {
   const { data: cats = [] } = useCategories();
@@ -106,7 +108,7 @@ export function TransactionModal({
     if (isEdit && editing) {
       update.mutate({ id: editing.id, body: data }, { onSuccess: onClose });
     } else {
-      create.mutate({ ...data, ocr_text: ocrText }, {
+      create.mutate({ ...data, ocr_text: ocrText, receipt_hash: pendingHash }, {
         onSuccess: async (created: Transaction) => {
           if (pendingImage) {
             try {

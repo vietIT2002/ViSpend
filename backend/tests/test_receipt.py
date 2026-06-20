@@ -81,6 +81,21 @@ def test_upload_receipt_rejects_non_image(auth_client, monkeypatch):
     assert auth_client.post(f"/api/transactions/{txn['id']}/receipt", files=files).status_code == 422
 
 
+def test_receipt_duplicate_detection(auth_client):
+    cid = next(c["id"] for c in auth_client.get("/api/categories").json() if c["type"] == "expense")
+    h = "a" * 64
+    # No transaction yet -> not a duplicate.
+    assert auth_client.get(f"/api/transactions/receipt-duplicate?hash={h}").json()["duplicate"] is False
+    auth_client.post("/api/transactions", json={
+        "type": "expense", "amount": "12345", "category_id": cid,
+        "occurred_on": "2026-06-07", "method": "cash", "receipt_hash": h})
+    # Same hash -> duplicate, with the existing transaction's details.
+    dup = auth_client.get(f"/api/transactions/receipt-duplicate?hash={h}").json()
+    assert dup["duplicate"] is True
+    assert dup["occurred_on"] == "2026-06-07"
+    assert dup["amount"] == "12345.00"
+
+
 def test_create_stores_ocr_text(auth_client, session):
     import uuid as _uuid
     from app.models import Transaction

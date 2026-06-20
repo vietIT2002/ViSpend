@@ -114,6 +114,14 @@ def delete_transaction(session: Session, user: User, txn_id: uuid.UUID) -> None:
     session.commit()
 
 
+def find_by_receipt_hash(session: Session, user: User, receipt_hash: str) -> Transaction | None:
+    return session.exec(
+        select(Transaction)
+        .where(Transaction.user_id == user.id, Transaction.receipt_hash == receipt_hash)
+        .order_by(Transaction.created_at.desc())
+    ).first()
+
+
 def set_receipt_path(session: Session, user: User, txn_id: uuid.UUID, path: str) -> Transaction:
     txn = get_owned_transaction(session, user, txn_id)
     txn.receipt_path = path

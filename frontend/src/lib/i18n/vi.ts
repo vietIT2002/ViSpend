@@ -406,6 +406,7 @@ export const vi: Dict = {
   "scan.attach": "Đính kèm ảnh vào giao dịch này",
   "scan.viewReceipt": "Xem hóa đơn",
   "scan.uploadFailed": "Đã lưu giao dịch, nhưng không tải được ảnh lên. Kiểm tra cấu hình Supabase Storage.",
+  "scan.duplicate": "Ảnh này đã được lưu thành giao dịch ({amount} ngày {date}). Vẫn tạo giao dịch mới chứ?",
   "errors.receipt_storage_unconfigured": "Chưa cấu hình lưu trữ ảnh.",
   "errors.receipt_not_found": "Giao dịch này chưa có ảnh đính kèm.",
   "errors.receipt_unavailable": "Không tải được ảnh hóa đơn.",

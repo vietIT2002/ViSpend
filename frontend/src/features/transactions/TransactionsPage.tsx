@@ -39,6 +39,7 @@ export function TransactionsPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [prefill, setPrefill] = useState<ParseSuggestion | null>(null);
   const [pendingImage, setPendingImage] = useState<Blob | null>(null);
+  const [pendingHash, setPendingHash] = useState<string | null>(null);
   const [ocrText, setOcrText] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -74,7 +75,21 @@ export function TransactionsPage() {
     setScanning(true);
     setScanProgress(0);
     try {
-      const { compressImage, recognizeImage } = await import("./ocr");
+      const { compressImage, recognizeImage, sha256Hex } = await import("./ocr");
+      // Warn early if this exact image was already saved as a transaction.
+      const hash = await sha256Hex(file);
+      const dup = await api.get<{
+        duplicate: boolean;
+        occurred_on?: string;
+        amount?: string;
+      }>(`/transactions/receipt-duplicate?hash=${hash}`);
+      if (dup.duplicate) {
+        const when = dup.occurred_on ? format(new Date(dup.occurred_on), "dd/MM/yyyy") : "";
+        const proceed = window.confirm(
+          t("scan.duplicate", { date: when, amount: vnd(Number(dup.amount ?? 0)) }),
+        );
+        if (!proceed) return;
+      }
       // OCR on the original (preprocessing happens inside); compress only for upload.
       const [text, compressed] = await Promise.all([
         recognizeImage(file, setScanProgress),
@@ -84,12 +99,14 @@ export function TransactionsPage() {
       const suggestion = await parseText.mutateAsync(text);
       setPrefill(suggestion);
       setPendingImage(compressed);
+      setPendingHash(hash);
       setEditing(null);
       setNewType(suggestion.type);
       setModalOpen(true);
     } catch {
       setPrefill(null);
       setPendingImage(null);
+      setPendingHash(null);
       setOcrText(null);
       alert(t("scan.failed"));
     } finally {
@@ -308,11 +325,12 @@ export function TransactionsPage() {
 
       <TransactionModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setPrefill(null); setPendingImage(null); setOcrText(null); }}
+        onClose={() => { setModalOpen(false); setPrefill(null); setPendingImage(null); setPendingHash(null); setOcrText(null); }}
         editing={editing}
         defaultType={newType}
         prefill={prefill ?? undefined}
         pendingImage={pendingImage}
+        pendingHash={pendingHash ?? undefined}
         ocrText={ocrText ?? undefined}
       />
 

@@ -1,3 +1,12 @@
+// SHA-256 (hex) of a file's bytes — used to detect re-uploads of the same image.
+export async function sha256Hex(file: Blob): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // Downscale + JPEG-compress an image so upload stays small/fast (storage).
 export async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<Blob> {
   const bitmap = await createImageBitmap(file);

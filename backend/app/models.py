@@ -68,6 +68,9 @@ class Transaction(SQLModel, table=True):
     method: PayMethod = PayMethod.cash
     note: str | None = None
     receipt_path: str | None = None
+    # SHA-256 of the scanned image, used to warn when the same receipt is
+    # uploaded again. Indexed for fast per-user duplicate lookups.
+    receipt_hash: str | None = Field(default=None, index=True)
     ocr_text: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)

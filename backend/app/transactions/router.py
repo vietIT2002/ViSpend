@@ -11,6 +11,7 @@ from app.intake.classifier import suggest_category
 from app.intake.parsing import parse_text
 from app.models import PayMethod, TxnType, User
 from app.schemas import (
+    DuplicateReceipt,
     PaginatedTransactions,
     ParseRequest,
     ParseSuggestion,
@@ -21,6 +22,7 @@ from app.schemas import (
 from app.transactions.service import (
     create_transaction,
     delete_transaction,
+    find_by_receipt_hash,
     get_owned_transaction,
     list_transactions,
     set_receipt_path,
@@ -81,6 +83,23 @@ def parse(
         note=fields.note,
         method=fields.method,
         confidence=confidence,
+    )
+
+
+@router.get("/receipt-duplicate", response_model=DuplicateReceipt)
+def receipt_duplicate(
+    hash: str = Query(min_length=8, max_length=64),
+    session: Session = Depends(get_session),
+    current: User = Depends(get_current_user),
+) -> DuplicateReceipt:
+    existing = find_by_receipt_hash(session, current, hash)
+    if existing is None:
+        return DuplicateReceipt(duplicate=False)
+    return DuplicateReceipt(
+        duplicate=True,
+        id=existing.id,
+        occurred_on=existing.occurred_on,
+        amount=existing.amount,
     )
 
 

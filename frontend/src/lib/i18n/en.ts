@@ -406,6 +406,7 @@ export const en = {
   "scan.attach": "Attach image to this transaction",
   "scan.viewReceipt": "View receipt",
   "scan.uploadFailed": "Transaction saved, but the image could not be uploaded. Check Supabase Storage settings.",
+  "scan.duplicate": "This image was already saved as a transaction ({amount} on {date}). Create another one anyway?",
   "errors.receipt_storage_unconfigured": "Image storage is not set up yet.",
   "errors.receipt_not_found": "No image attached to this transaction.",
   "errors.receipt_unavailable": "Could not load the receipt image.",

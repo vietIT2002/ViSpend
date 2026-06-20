@@ -135,6 +135,7 @@ class TransactionCreate(BaseModel):
     method: PayMethod = PayMethod.cash
     note: str | None = Field(default=None, max_length=255)
     ocr_text: str | None = Field(default=None, max_length=5000)
+    receipt_hash: str | None = Field(default=None, max_length=64)
 
 
 class TransactionUpdate(BaseModel):
@@ -168,6 +169,14 @@ class PaginatedTransactions(BaseModel):
 
 class ParseRequest(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
+
+
+class DuplicateReceipt(BaseModel):
+    # Minimal info about an existing transaction that already used the same image.
+    duplicate: bool
+    id: uuid.UUID | None = None
+    occurred_on: date | None = None
+    amount: Decimal | None = None
 
 
 class ParseSuggestion(BaseModel):
