@@ -38,3 +38,18 @@ def test_defaults_today_when_no_date():
 def test_no_amount_returns_none():
     p = parse_text("khong co so tien o day", today=TODAY)
     assert p.amount is None
+
+
+def test_picks_total_paid_over_fare_on_multiamount_receipt():
+    # beBike-style receipt: gross fare first, real amount paid labelled "Tra qua".
+    text = (
+        "Chi tiet chuyen di\nThanh toan\n"
+        "Cuoc phi 42.000d\nGiam den 20% -9.000d\n"
+        "Dung 2.000 xu beOne -2.000d\nBao hiem chuyen di 2.000d\n"
+        "Tra qua ShopeePay 33.000d\n"
+        "Ma chuyen di: 1415044345  19/06/2026 15:37  beBike"
+    )
+    p = parse_text(text, today=TODAY)
+    assert p.amount == Decimal("33000")  # not the 42.000 gross fare
+    assert p.type == TxnType.expense
+    assert p.occurred_on == date(2026, 6, 19)
