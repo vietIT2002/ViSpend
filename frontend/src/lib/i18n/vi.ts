@@ -407,4 +407,7 @@ export const vi: Dict = {
   "scan.viewReceipt": "Xem hóa đơn",
   "errors.receipt_storage_unconfigured": "Chưa cấu hình lưu trữ ảnh.",
   "errors.receipt_not_found": "Giao dịch này chưa có ảnh đính kèm.",
+  "errors.receipt_unavailable": "Không tải được ảnh hóa đơn.",
+  "errors.receipt_invalid_type": "Chỉ chấp nhận ảnh JPG, PNG hoặc WebP.",
+  "errors.receipt_too_large": "Ảnh quá lớn (tối đa 5 MB).",
 };
