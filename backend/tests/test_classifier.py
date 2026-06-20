@@ -90,3 +90,20 @@ def test_create_transaction_trains_model(auth_client):
             "occurred_on": "2026-06-10", "method": "cash", "note": note})
     r = auth_client.post("/api/transactions/parse", json={"text": "ND: com tam suon nuong"})
     assert r.json()["category_id"] == food["id"]
+
+
+from app.intake.rules import merchant_label
+
+
+def test_winmart_is_shopping():
+    assert rule_category_key("WinMart PHIEU TINH TIEN") == "shopping"
+
+
+def test_merchant_label_known_brands():
+    assert merchant_label("Tra qua ShopeePay") == "ShopeePay"
+    assert merchant_label("WinMart PHIEU TINH TIEN") == "WinMart"
+    assert merchant_label("beBike Ga Ben Thanh") == "beBike"
+
+
+def test_merchant_label_unknown_returns_none():
+    assert merchant_label("cua hang abcxyz la") is None
