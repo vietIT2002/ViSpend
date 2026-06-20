@@ -134,6 +134,7 @@ class TransactionCreate(BaseModel):
     occurred_on: date
     method: PayMethod = PayMethod.cash
     note: str | None = Field(default=None, max_length=255)
+    ocr_text: str | None = Field(default=None, max_length=5000)
 
 
 class TransactionUpdate(BaseModel):
@@ -175,6 +176,7 @@ class ParseSuggestion(BaseModel):
     occurred_on: date
     category_id: uuid.UUID | None = None
     note: str | None = None
+    method: PayMethod = PayMethod.cash
     confidence: float  # 0..1 — how confident the category suggestion is
 
 

@@ -71,3 +71,16 @@ def test_upload_receipt_rejects_non_image(auth_client, monkeypatch):
         "occurred_on": "2026-06-20", "method": "cash"}).json()
     files = {"file": ("r.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")}
     assert auth_client.post(f"/api/transactions/{txn['id']}/receipt", files=files).status_code == 422
+
+
+def test_create_stores_ocr_text(auth_client, session):
+    import uuid as _uuid
+    from app.models import Transaction
+    cid = next(c["id"] for c in auth_client.get("/api/categories").json() if c["type"] == "expense")
+    r = auth_client.post("/api/transactions", json={
+        "type": "expense", "amount": "73300", "category_id": cid,
+        "occurred_on": "2026-06-20", "method": "cash",
+        "note": "WinMart", "ocr_text": "WinMart PHIEU TINH TIEN ... TONG TIEN THANH TOAN 73.300"})
+    assert r.status_code == 201
+    txn = session.get(Transaction, _uuid.UUID(r.json()["id"]))
+    assert txn.ocr_text.startswith("WinMart")

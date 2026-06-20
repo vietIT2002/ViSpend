@@ -68,6 +68,7 @@ class Transaction(SQLModel, table=True):
     method: PayMethod = PayMethod.cash
     note: str | None = None
     receipt_path: str | None = None
+    ocr_text: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
