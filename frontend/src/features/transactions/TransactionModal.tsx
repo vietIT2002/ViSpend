@@ -107,8 +107,14 @@ export function TransactionModal({
       update.mutate({ id: editing.id, body: data }, { onSuccess: onClose });
     } else {
       create.mutate({ ...data, ocr_text: ocrText }, {
-        onSuccess: (created: Transaction) => {
-          if (pendingImage) uploadReceipt.mutate({ id: created.id, file: pendingImage });
+        onSuccess: async (created: Transaction) => {
+          if (pendingImage) {
+            try {
+              await uploadReceipt.mutateAsync({ id: created.id, file: pendingImage });
+            } catch {
+              alert(t("scan.uploadFailed"));
+            }
+          }
           onClose();
         },
       });

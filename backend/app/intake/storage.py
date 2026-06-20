@@ -8,7 +8,12 @@ def configured() -> bool:
 
 
 def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {settings.supabase_service_key}"}
+    # Supabase Storage wants both apikey and Authorization; sending both works
+    # for legacy service_role JWTs and the new sb_secret_ keys alike.
+    return {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+    }
 
 
 def upload_receipt(path: str, data: bytes, content_type: str) -> None:
