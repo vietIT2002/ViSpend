@@ -104,3 +104,19 @@ def test_method_no_substring_false_positive():
 def test_note_fallback_to_merchant():
     p = parse_text("WinMart PHIEU TINH TIEN ... TONG TIEN THANH TOAN 73,300", today=TODAY)
     assert p.note == "WinMart"
+
+
+def test_retail_receipt_tong_tt_keyword_and_date():
+    # Small retail bill: "Tổng TT" label, date dd/mm/yyyy.
+    text = ("HOA DON BAN LE\nNgay mua: 07/06/2018 12:00:00\n"
+            "RAU MUONG kg 1 20.000 20.000\nTong SL 1 Tong TT 20.000 d")
+    p = parse_text(text, today=TODAY)
+    assert p.amount == Decimal("20000")
+    assert p.occurred_on == date(2018, 6, 7)
+
+
+def test_amount_fallback_to_largest_grouped_number():
+    # No total keyword, no currency suffix: take the largest thousand-grouped
+    # number (the year 2026 has no separator and must be ignored).
+    p = parse_text("RAU MUONG 1 18.500 nuoc 20.000 nam 2026", today=TODAY)
+    assert p.amount == Decimal("20000")

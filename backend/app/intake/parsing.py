@@ -18,10 +18,15 @@ _AMOUNT_RE = re.compile(
 # at the first number. Run on deaccented text; take the LAST match (the paid
 # total sits below the gross subtotal / discounts).
 _PAID_RE = re.compile(
-    r"(?:tong tien thanh toan|tong thanh toan|thanh toan|tra qua|tong cong|thanh tien)"
+    r"(?:tong tien thanh toan|tong thanh toan|thanh toan|tra qua|tong cong|"
+    r"tong tien|tong tt|tien thanh toan|thanh tien)"
     r"[^\d]{0,40}(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{4,})",
     re.IGNORECASE,
 )
+# Thousand-grouped numbers (e.g. 20.000, 1,234,567). Used as a last-resort
+# amount fallback on paper receipts: the largest such number is almost always
+# the grand total. Bare numbers (years, IDs) are intentionally excluded.
+_GROUPED_NUM_RE = re.compile(r"\b\d{1,3}(?:[.,]\d{3})+\b")
 # Dates on receipts / transfers come in many forms. Day-month-year with "/" or
 # "-" (year optional, 2 or 4 digits); dot form requires a 4-digit year so it
 # can't swallow money like 12.000.000; and ISO yyyy-mm-dd. First valid date wins.
@@ -75,6 +80,10 @@ def _select_amount(text: str) -> tuple[Decimal | None, str | None]:
     matches = list(_AMOUNT_RE.finditer(text))
     if matches:
         return _to_decimal(matches[0].group("num")), matches[0].group("sign")
+    # 3. Fallback: largest thousand-grouped number (paper receipts, faint OCR).
+    grouped = [v for m in _GROUPED_NUM_RE.finditer(_deaccent(text)) if (v := _to_decimal(m.group()))]
+    if grouped:
+        return max(grouped), None
     return None, None
 
 
