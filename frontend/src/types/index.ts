@@ -31,6 +31,16 @@ export interface Transaction {
   method: PayMethod;
   note: string | null;
   created_at: string;
+  has_receipt: boolean;
+}
+
+export interface ParseSuggestion {
+  type: TxnType;
+  amount: string | null;
+  occurred_on: string;
+  category_id: string | null;
+  note: string | null;
+  confidence: number;
 }
 
 export interface Paginated<T> {

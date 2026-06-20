@@ -398,4 +398,13 @@ export const vi: Dict = {
   "errors.invalid_reset_token": "Liên kết đặt lại không hợp lệ hoặc đã hết hạn.",
   "errors.user_not_found": "Không tìm thấy người dùng.",
   "errors.invalid_token": "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.",
+  "scan.button": "Quét ảnh",
+  "scan.title": "Quét ảnh hóa đơn hoặc ảnh chuyển khoản",
+  "scan.choose": "Chọn ảnh",
+  "scan.reading": "Đang đọc ảnh…",
+  "scan.failed": "Không đọc được ảnh. Vui lòng nhập giao dịch thủ công.",
+  "scan.attach": "Đính kèm ảnh vào giao dịch này",
+  "scan.viewReceipt": "Xem hóa đơn",
+  "errors.receipt_storage_unconfigured": "Chưa cấu hình lưu trữ ảnh.",
+  "errors.receipt_not_found": "Giao dịch này chưa có ảnh đính kèm.",
 };

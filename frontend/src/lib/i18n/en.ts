@@ -398,6 +398,15 @@ export const en = {
   "errors.invalid_reset_token": "This reset link is invalid or expired.",
   "errors.user_not_found": "User not found.",
   "errors.invalid_token": "Your session is invalid. Please sign in again.",
+  "scan.button": "Scan image",
+  "scan.title": "Scan a receipt or transfer image",
+  "scan.choose": "Choose image",
+  "scan.reading": "Reading image…",
+  "scan.failed": "Could not read the image. Enter the transaction manually.",
+  "scan.attach": "Attach image to this transaction",
+  "scan.viewReceipt": "View receipt",
+  "errors.receipt_storage_unconfigured": "Image storage is not set up yet.",
+  "errors.receipt_not_found": "No image attached to this transaction.",
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;
