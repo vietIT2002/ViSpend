@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""
     supabase_bucket: str = "receipts"
+    # Optional dedicated Fernet key for receipt-image encryption. If empty, a key
+    # is derived from jwt_secret so encryption works with no extra setup.
+    receipt_encryption_key: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

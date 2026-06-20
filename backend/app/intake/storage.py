@@ -27,6 +27,13 @@ def upload_receipt(path: str, data: bytes, content_type: str) -> None:
     r.raise_for_status()
 
 
+def download_receipt(path: str) -> bytes:
+    url = f"{settings.supabase_url}/storage/v1/object/{settings.supabase_bucket}/{path}"
+    r = httpx.get(url, headers=_headers(), timeout=30)
+    r.raise_for_status()
+    return r.content
+
+
 def signed_url(path: str, expires_in: int = 3600) -> str:
     url = f"{settings.supabase_url}/storage/v1/object/sign/{settings.supabase_bucket}/{path}"
     r = httpx.post(url, headers=_headers(), json={"expiresIn": expires_in}, timeout=30)

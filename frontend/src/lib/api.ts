@@ -63,8 +63,23 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+// Fetch a binary response (e.g. a decrypted receipt image) with auth headers.
+async function requestBlob(path: string): Promise<Blob> {
+  const headers = new Headers();
+  const authToken = token();
+  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+  const response = await fetch(`${API_URL}${path}`, { headers });
+  if (!response.ok) {
+    if (response.status === 401 && authToken) onUnauthorized?.();
+    const body = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new ApiError(body.detail ?? response.statusText, response.status);
+  }
+  return response.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  getBlob: (path: string) => requestBlob(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",

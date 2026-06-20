@@ -27,19 +27,27 @@ def test_upload_receipt_sets_flag(auth_client, monkeypatch):
     assert r.json()["has_receipt"] is True
 
 
-def test_get_receipt_url(auth_client, monkeypatch):
+def test_get_receipt_returns_decrypted_image(auth_client, monkeypatch):
+    # Round-trip: bytes stored in Supabase are encrypted; GET decrypts and streams
+    # the original image back with the right content-type.
+    store: dict[str, bytes] = {}
     monkeypatch.setattr(storage, "configured", lambda: True)
-    monkeypatch.setattr(storage, "upload_receipt", lambda path, data, content_type: None)
-    monkeypatch.setattr(storage, "signed_url", lambda path, expires_in=3600: "https://x/y")
+    monkeypatch.setattr(storage, "upload_receipt",
+                        lambda path, data, content_type: store.__setitem__(path, data))
+    monkeypatch.setattr(storage, "download_receipt", lambda path: store[path])
     cid = next(c["id"] for c in auth_client.get("/api/categories").json() if c["type"] == "expense")
     txn = auth_client.post("/api/transactions", json={
         "type": "expense", "amount": "10000", "category_id": cid,
         "occurred_on": "2026-06-20", "method": "cash"}).json()
-    files = {"file": ("r.jpg", io.BytesIO(b"\xff\xd8\xff"), "image/jpeg")}
+    original = b"\xff\xd8\xff\x00-secret-receipt-bytes"
+    files = {"file": ("r.jpg", io.BytesIO(original), "image/jpeg")}
     auth_client.post(f"/api/transactions/{txn['id']}/receipt", files=files)
     r = auth_client.get(f"/api/transactions/{txn['id']}/receipt")
     assert r.status_code == 200
-    assert r.json()["url"] == "https://x/y"
+    assert r.headers["content-type"].startswith("image/jpeg")
+    assert r.content == original  # decrypted back to the original
+    stored = next(iter(store.values()))
+    assert stored != original  # at rest it is ciphertext, not the raw image
 
 
 def test_get_receipt_404_when_absent(auth_client):

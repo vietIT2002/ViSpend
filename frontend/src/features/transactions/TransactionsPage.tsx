@@ -340,10 +340,11 @@ export function TransactionsPage() {
                 <Button
                   variant="secondary"
                   onClick={async () => {
-                    const { url } = await api.get<{ url: string }>(
-                      `/transactions/${viewing.id}/receipt`,
-                    );
+                    const blob = await api.getBlob(`/transactions/${viewing.id}/receipt`);
+                    const url = URL.createObjectURL(blob);
                     window.open(url, "_blank", "noopener");
+                    // Revoke shortly after so the tab has time to load the image.
+                    setTimeout(() => URL.revokeObjectURL(url), 60_000);
                   }}
                 >
                   {t("scan.viewReceipt")}

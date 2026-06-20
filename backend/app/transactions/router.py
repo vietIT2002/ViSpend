@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from app.core.db import get_session
 from app.core.security import get_current_user
-from app.intake import storage
+from app.intake import crypto, storage
 from app.intake.classifier import suggest_category
 from app.intake.parsing import parse_text
 from app.models import PayMethod, TxnType, User
@@ -100,9 +100,15 @@ def upload_receipt(
     data = file.file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "receipt_too_large")
-    path = f"{current.id}/{txn.id}.{ext}"
-    storage.upload_receipt(path, data, file.content_type or "image/jpeg")
+    # Encrypt before upload: the bytes at rest in Supabase are unreadable even if
+    # the bucket/key is exposed. The original extension is kept in the path so we
+    # can serve the right content-type after decrypting.
+    path = f"{current.id}/{txn.id}.{ext}.enc"
+    storage.upload_receipt(path, crypto.encrypt(data), "application/octet-stream")
     return set_receipt_path(session, current, txn_id, path)
+
+
+_MIME_BY_EXT = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
 
 @router.get("/{txn_id}/receipt")
@@ -110,16 +116,21 @@ def get_receipt(
     txn_id: uuid.UUID,
     session: Session = Depends(get_session),
     current: User = Depends(get_current_user),
-) -> dict:
+) -> Response:
     txn = get_owned_transaction(session, current, txn_id)
     if not txn.receipt_path:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "receipt_not_found")
     if not storage.configured():
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_storage_unconfigured")
     try:
-        return {"url": storage.signed_url(txn.receipt_path)}
+        blob = storage.download_receipt(txn.receipt_path)
+        data = crypto.decrypt(blob) if txn.receipt_path.endswith(".enc") else blob
     except Exception:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "receipt_unavailable")
+    # path looks like "<ext>.enc" or "<ext>"; pick the extension before .enc.
+    parts = txn.receipt_path.removesuffix(".enc").rsplit(".", 1)
+    mime = _MIME_BY_EXT.get(parts[-1].lower(), "image/jpeg") if len(parts) > 1 else "image/jpeg"
+    return Response(content=data, media_type=mime, headers={"Cache-Control": "private, no-store"})
 
 
 @router.get("/{txn_id}", response_model=TransactionOut)
