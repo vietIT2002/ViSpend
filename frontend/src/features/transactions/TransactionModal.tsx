@@ -13,8 +13,8 @@ import { DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker"
 import { useCategories, useCreateCategory } from "../categories/hooks";
 import { useCategoryLabel, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
-import type { Transaction, TxnType } from "../../types";
-import { useCreateTransaction, useUpdateTransaction } from "./hooks";
+import type { ParseSuggestion, Transaction, TxnType } from "../../types";
+import { useCreateTransaction, useUpdateTransaction, useUploadReceipt } from "./hooks";
 
 const schema = z.object({
   type: z.enum(["expense", "income"]),
@@ -32,16 +32,21 @@ export function TransactionModal({
   onClose,
   editing,
   defaultType = "expense",
+  prefill,
+  pendingImage,
 }: {
   open: boolean;
   onClose: () => void;
   editing?: Transaction | null;
   defaultType?: TxnType;
+  prefill?: ParseSuggestion;
+  pendingImage?: Blob | null;
 }) {
   const { data: cats = [] } = useCategories();
   const createCat = useCreateCategory();
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
+  const uploadReceipt = useUploadReceipt();
   const t = useT();
   const categoryLabel = useCategoryLabel();
   const isEdit = Boolean(editing);
@@ -69,10 +74,19 @@ export function TransactionModal({
         method: editing.method,
         note: editing.note ?? "",
       });
+    } else if (prefill) {
+      reset({
+        type: prefill.type,
+        amount: prefill.amount ?? "",
+        category_id: prefill.category_id ?? "",
+        occurred_on: prefill.occurred_on,
+        method: "cash",
+        note: prefill.note ?? "",
+      });
     } else {
       reset({ type: defaultType, method: "cash", occurred_on: today(), note: "" });
     }
-  }, [open, editing, defaultType, reset]);
+  }, [open, editing, defaultType, prefill, reset]);
 
   // Keep a category valid for the selected type.
   useEffect(() => {
@@ -90,7 +104,14 @@ export function TransactionModal({
     if (isEdit && editing) {
       update.mutate({ id: editing.id, body: data }, { onSuccess: onClose });
     } else {
-      create.mutate(data, { onSuccess: onClose });
+      create.mutate(data, {
+        onSuccess: (created: Transaction) => {
+          if (pendingImage) {
+            uploadReceipt.mutate({ id: created.id, file: pendingImage }); // background
+          }
+          onClose();
+        },
+      });
     }
   }
 
