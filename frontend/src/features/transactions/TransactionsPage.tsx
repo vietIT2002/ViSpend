@@ -75,8 +75,11 @@ export function TransactionsPage() {
     setScanProgress(0);
     try {
       const { compressImage, recognizeImage } = await import("./ocr");
-      const compressed = await compressImage(file);
-      const text = await recognizeImage(compressed, setScanProgress);
+      // OCR on the original (preprocessing happens inside); compress only for upload.
+      const [text, compressed] = await Promise.all([
+        recognizeImage(file, setScanProgress),
+        compressImage(file),
+      ]);
       setOcrText(text);
       const suggestion = await parseText.mutateAsync(text);
       setPrefill(suggestion);

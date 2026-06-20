@@ -12,11 +12,14 @@ _AMOUNT_RE = re.compile(
     r"(?P<sign>[+-])?\s*(?P<num>\d{1,3}(?:[.,]\d{3})+|\d+)\s*(?:vnd|đ|d)\b",
     re.IGNORECASE,
 )
-# Grand-total / amount-paid line — number may be bare (paper receipts). Run on
-# deaccented text. Take the LAST match (totals sit at the bottom).
+# Grand-total / amount-paid line — number may be bare (paper receipts) and may
+# fall on the next line after the label (app screenshots split "Trả qua X" and
+# the amount across columns/icons). Allow the gap to cross a line break, but stop
+# at the first number. Run on deaccented text; take the LAST match (the paid
+# total sits below the gross subtotal / discounts).
 _PAID_RE = re.compile(
     r"(?:tong tien thanh toan|tong thanh toan|thanh toan|tra qua|tong cong|thanh tien)"
-    r"[^\d\n]{0,30}(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{4,})",
+    r"[^\d]{0,40}(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{4,})",
     re.IGNORECASE,
 )
 _DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{4}))?\b")

@@ -72,6 +72,15 @@ def test_detect_method_transfer_and_card_and_cash():
     assert parse_text("mua ca phe 35.000d", today=TODAY).method == PayMethod.cash  # default
 
 
+def test_paid_amount_when_label_and_number_split_across_lines():
+    # App screenshots often OCR the wallet label and the amount onto separate
+    # lines (icon / two columns). The paid total must still win over the fare.
+    text = ("Thanh toan\nCuoc phi 42.000d\nGiam den 20% -9.000d\n"
+            "Tra qua ShopeePay\n33.000d\nXu beOne nhan duoc +3.300")
+    p = parse_text(text, today=TODAY)
+    assert p.amount == Decimal("33000")  # not 42.000 fare, not +3.300 reward
+
+
 def test_method_no_substring_false_positive():
     # "acb"/"qr" must not match inside ordinary words; plain currency amount still parses.
     p = parse_text("mua macbook 25.000.000d", today=TODAY)
