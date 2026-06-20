@@ -1,16 +1,28 @@
+import datetime
 import pickle
 import uuid
 
-from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.linear_model import SGDClassifier
 from sqlmodel import Session, select
 
 from app.intake.rules import normalize, rule_category_key
 from app.models import Category, CategoryClassifier, Transaction, TxnType, User
 
-# Stateless vectorizer (no vocabulary to persist) — pairs with partial_fit.
-_VECT = HashingVectorizer(n_features=2**18, alternate_sign=False, norm="l2")
 _ML_THRESHOLD = 0.55  # min predict_proba to trust an ML suggestion
+
+# scikit-learn (numpy/scipy) is heavy to import and memory-hungry. Import it
+# lazily so app startup stays fast and light (important on small instances);
+# the vectorizer is created once on first use and reused.
+_vect = None
+
+
+def _get_vect():
+    global _vect
+    if _vect is None:
+        from sklearn.feature_extraction.text import HashingVectorizer
+
+        # Stateless vectorizer (no vocabulary to persist) — pairs with partial_fit.
+        _vect = HashingVectorizer(n_features=2**18, alternate_sign=False, norm="l2")
+    return _vect
 
 
 def _labeled_history(session: Session, user_id: uuid.UUID) -> list[tuple[str, str]]:
@@ -20,13 +32,12 @@ def _labeled_history(session: Session, user_id: uuid.UUID) -> list[tuple[str, st
     return [(t.note, str(t.category_id)) for t in rows if t.note and t.note.strip()]
 
 
-def _load(session: Session, user_id: uuid.UUID) -> SGDClassifier | None:
+def _load(session: Session, user_id: uuid.UUID):
     row = session.get(CategoryClassifier, user_id)
     return pickle.loads(row.model_blob) if row else None
 
 
-def _save(session: Session, user_id: uuid.UUID, model: SGDClassifier) -> None:
-    import datetime
+def _save(session: Session, user_id: uuid.UUID, model) -> None:
     row = session.get(CategoryClassifier, user_id)
     blob = pickle.dumps(model)
     if row:
@@ -43,7 +54,9 @@ def retrain(session: Session, user: User) -> None:
     labels = sorted({label for _, label in history})
     if len(labels) < 2:
         return  # need >=2 categories for a usable classifier
-    X = _VECT.transform([normalize(n) for n, _ in history])
+    from sklearn.linear_model import SGDClassifier
+
+    X = _get_vect().transform([normalize(n) for n, _ in history])
     y = [label for _, label in history]
     model = SGDClassifier(loss="log_loss")
     model.partial_fit(X, y, classes=labels)
@@ -58,7 +71,7 @@ def learn(session: Session, user: User, note: str, category_id: uuid.UUID) -> No
     if model is None or label not in set(model.classes_):
         retrain(session, user)  # class set changed (or no model yet)
         return
-    X = _VECT.transform([normalize(note)])
+    X = _get_vect().transform([normalize(note)])
     model.partial_fit(X, [label])
     _save(session, user.id, model)
 
@@ -70,6 +83,23 @@ def _history_match(session: Session, user_id: uuid.UUID, note: str) -> uuid.UUID
     for n, label in _labeled_history(session, user_id):
         if normalize(n) == target:
             return uuid.UUID(label)
+    return None
+
+
+def _ml_match(session: Session, user_id: uuid.UUID, note: str) -> tuple[uuid.UUID, float] | None:
+    """ML suggestion, or None. Best-effort: any failure (incl. sklearn import /
+    memory pressure on small instances) degrades silently to the next tier."""
+    try:
+        model = _load(session, user_id)
+        if model is None:
+            return None
+        X = _get_vect().transform([normalize(note)])
+        proba = model.predict_proba(X)[0]
+        best = proba.argmax()
+        if proba[best] >= _ML_THRESHOLD:
+            return uuid.UUID(model.classes_[best]), float(proba[best])
+    except Exception:
+        return None
     return None
 
 
@@ -93,14 +123,10 @@ def suggest_category(session: Session, user: User, note: str) -> tuple[uuid.UUID
     hit = _history_match(session, user.id, note)
     if hit is not None:
         return hit, 0.95
-    # 2. ML
-    model = _load(session, user.id)
-    if model is not None:
-        X = _VECT.transform([normalize(note)])
-        proba = model.predict_proba(X)[0]
-        best = proba.argmax()
-        if proba[best] >= _ML_THRESHOLD:
-            return uuid.UUID(model.classes_[best]), float(proba[best])
+    # 2. ML (best-effort)
+    ml = _ml_match(session, user.id, note)
+    if ml is not None:
+        return ml
     # 3. Rules
     rule = _rules_match(session, user, note)
     if rule is not None:
