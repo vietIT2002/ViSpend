@@ -116,6 +116,8 @@ export const en = {
     "At least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character",
   "auth.sessionChecking": "Checking your session",
   "auth.sessionCheckingBody": "This should only take a moment. If your previous session expired, we will send you back to sign in automatically.",
+  "auth.serverWaking": "Starting ViSpend...",
+  "auth.serverWakingBody": "The server is waking up. Please keep this tab open; you will be taken to your dashboard automatically.",
 
   // Forgot password
   "forgot.title": "Reset password",

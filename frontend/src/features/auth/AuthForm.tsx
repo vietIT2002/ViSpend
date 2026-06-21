@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { LanguageToggle } from "../../components/ui/language-toggle";
 import { cn } from "../../lib/utils";
+import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useErrorText, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
@@ -259,6 +260,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginSlow, setLoginSlow] = useState(false);
   const {
     register: field,
     handleSubmit,
@@ -267,8 +269,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   const isLogin = mode === "login";
 
+  useEffect(() => {
+    void api.get("/health", { timeoutMs: 8_000 }).catch(() => {
+      // Best-effort warm-up for cold API hosts; login still reports real errors.
+    });
+  }, []);
+
   async function onSubmit(values: Form) {
     setError(null);
+    setLoginSlow(false);
+    const slowTimer = window.setTimeout(() => setLoginSlow(true), 5_000);
     try {
       if (isLogin) {
         await login(values.username, values.password);
@@ -278,6 +288,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       navigate("/");
     } catch (err) {
       setError(errText(err));
+    } finally {
+      window.clearTimeout(slowTimer);
     }
   }
 
@@ -427,8 +439,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               )}
 
               <Button className="h-[52px] w-full rounded-lg text-base" disabled={isSubmitting}>
-                {isSubmitting ? t("common.pleaseWait") : isLogin ? t("auth.signIn") : t("auth.createAccount")}
+                {isSubmitting
+                  ? loginSlow
+                    ? t("auth.serverWaking")
+                    : t("common.pleaseWait")
+                  : isLogin
+                    ? t("auth.signIn")
+                    : t("auth.createAccount")}
               </Button>
+              {loginSlow && (
+                <p className="text-center text-sm leading-5 text-muted">{t("auth.serverWakingBody")}</p>
+              )}
             </form>
 
             <div className="mt-8">

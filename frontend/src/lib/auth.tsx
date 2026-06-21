@@ -11,6 +11,11 @@ import type { ReactNode } from "react";
 import { api, setUnauthorizedHandler } from "./api";
 import type { User } from "../types";
 
+interface LoginResponse {
+  access_token: string;
+  user: User;
+}
+
 interface AuthContextValue {
   user: User | null;
   token: string | null;
@@ -55,16 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const form = new FormData();
     form.set("username", username);
     form.set("password", password);
-    const data = await api.post<{ access_token: string }>("/auth/login", form);
+    const data = await api.post<LoginResponse>("/auth/login", form);
     localStorage.setItem("vispend_token", data.access_token);
+    setUser(data.user);
     setToken(data.access_token);
   }, []);
 
   const loginWithGoogle = useCallback(async (accessToken: string) => {
-    const data = await api.post<{ access_token: string }>("/auth/google", {
+    const data = await api.post<LoginResponse>("/auth/google", {
       access_token: accessToken,
     });
     localStorage.setItem("vispend_token", data.access_token);
+    setUser(data.user);
     setToken(data.access_token);
   }, []);
 

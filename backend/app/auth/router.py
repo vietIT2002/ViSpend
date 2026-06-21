@@ -56,7 +56,7 @@ def login(
     user = session.exec(select(User).where(User.username == form.username)).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_credentials")
-    return TokenOut(access_token=create_access_token(subject=str(user.id)))
+    return TokenOut(access_token=create_access_token(subject=str(user.id)), user=user)
 
 
 @router.post("/google", response_model=TokenOut)
@@ -98,7 +98,7 @@ def google_login(
     session.add(user)
     session.commit()
     session.refresh(user)
-    return TokenOut(access_token=create_access_token(subject=str(user.id)))
+    return TokenOut(access_token=create_access_token(subject=str(user.id)), user=user)
 
 
 @router.get("/me", response_model=UserOut)

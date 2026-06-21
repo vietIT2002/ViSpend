@@ -21,6 +21,7 @@ def test_register_then_login(client):
     assert r.status_code == 200
     assert "access_token" in r.json()
     assert r.json()["token_type"] == "bearer"
+    assert r.json()["user"]["username"] == "usertest"
 
 
 def test_register_rejects_weak_password(client):

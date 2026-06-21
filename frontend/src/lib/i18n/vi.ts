@@ -117,6 +117,9 @@ export const vi: Dict = {
   "auth.sessionChecking": "Đang kiểm tra phiên đăng nhập",
   "auth.sessionCheckingBody":
     "Quá trình này chỉ mất một lát. Nếu phiên cũ đã hết hạn, ứng dụng sẽ tự đưa bạn về màn đăng nhập.",
+  "auth.serverWaking": "Đang khởi động ViSpend...",
+  "auth.serverWakingBody":
+    "Máy chủ đang khởi động. Hãy giữ tab này mở, ứng dụng sẽ tự đưa bạn vào bảng điều khiển.",
 
   // Forgot password
   "forgot.title": "Đặt lại mật khẩu",
