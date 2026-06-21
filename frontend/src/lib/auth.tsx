@@ -23,6 +23,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const SESSION_CHECK_TIMEOUT_MS = 12_000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState(() => localStorage.getItem("vispend_token"));
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      setUser(await api.get<User>("/auth/me"));
+      setUser(await api.get<User>("/auth/me", { timeoutMs: SESSION_CHECK_TIMEOUT_MS }));
     } catch {
       localStorage.removeItem("vispend_token");
       setToken(null);

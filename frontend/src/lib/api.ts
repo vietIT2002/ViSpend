@@ -5,6 +5,8 @@ const API_URL =
   import.meta.env.VITE_API_URL ??
   (import.meta.env.PROD ? "https://vispend-api.onrender.com/api" : "/api");
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -35,7 +37,14 @@ const AUTH_PATHS = [
   "/auth/reset-password",
 ];
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+type ApiRequestInit = RequestInit & { timeoutMs?: number };
+
+function timeoutError() {
+  return new ApiError("Request timed out. Please try again.", 408);
+}
+
+async function request<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+  const { timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, signal, ...requestInit } = init;
   const headers = new Headers(init.headers);
   const authToken = token();
   if (authToken) {
@@ -44,7 +53,27 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!(init.body instanceof FormData) && init.body != null) {
     headers.set("Content-Type", "application/json");
   }
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  const abortFromCaller = () => controller.abort();
+  signal?.addEventListener("abort", abortFromCaller, { once: true });
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...requestInit,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw timeoutError();
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", abortFromCaller);
+  }
   if (!response.ok) {
     if (
       response.status === 401 &&
@@ -68,7 +97,19 @@ async function requestBlob(path: string): Promise<Blob> {
   const headers = new Headers();
   const authToken = token();
   if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
-  const response = await fetch(`${API_URL}${path}`, { headers });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { headers, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw timeoutError();
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   if (!response.ok) {
     if (response.status === 401 && authToken) onUnauthorized?.();
     const body = await response.json().catch(() => ({ detail: response.statusText }));
@@ -78,7 +119,7 @@ async function requestBlob(path: string): Promise<Blob> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, init?: ApiRequestInit) => request<T>(path, init),
   getBlob: (path: string) => requestBlob(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {

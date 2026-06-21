@@ -114,6 +114,8 @@ export const en = {
   "auth.usernameRule": "3-20 characters, lowercase letters and digits only",
   "auth.passwordRule":
     "At least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character",
+  "auth.sessionChecking": "Checking your session",
+  "auth.sessionCheckingBody": "This should only take a moment. If your previous session expired, we will send you back to sign in automatically.",
 
   // Forgot password
   "forgot.title": "Reset password",

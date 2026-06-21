@@ -114,6 +114,9 @@ export const vi: Dict = {
   "auth.usernameRule": "3-20 ký tự, chỉ gồm chữ thường và số",
   "auth.passwordRule":
     "Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và một ký tự đặc biệt",
+  "auth.sessionChecking": "Đang kiểm tra phiên đăng nhập",
+  "auth.sessionCheckingBody":
+    "Quá trình này chỉ mất một lát. Nếu phiên cũ đã hết hạn, ứng dụng sẽ tự đưa bạn về màn đăng nhập.",
 
   // Forgot password
   "forgot.title": "Đặt lại mật khẩu",
