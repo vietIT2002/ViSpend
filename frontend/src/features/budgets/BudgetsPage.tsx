@@ -78,17 +78,38 @@ function shiftMonth(month: string, delta: number) {
 function monthFirstIso(month: string) {
   return `${month}-01`;
 }
+function monthLastIso(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  return `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+}
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function defaultBudgetScope(month: string): "month" | "remaining" {
+function tomorrowIso() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+type BudgetScope = "month" | "remaining" | "custom";
+function defaultBudgetScope(month: string): BudgetScope {
   const now = new Date();
   const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   return month === current && now.getDate() > 5 ? "remaining" : "month";
 }
-function effectiveFromForScope(month: string, scope: "month" | "remaining") {
+function defaultCustomStart(month: string) {
+  const tomorrow = tomorrowIso();
+  if (tomorrow.startsWith(`${month}-`)) return tomorrow;
+  const today = todayIso();
+  if (today.startsWith(`${month}-`)) return today;
+  return monthFirstIso(month);
+}
+function isDateInMonth(value: string, month: string) {
+  return value >= monthFirstIso(month) && value <= monthLastIso(month);
+}
+function effectiveFromForScope(month: string, scope: BudgetScope, customDate: string) {
   if (scope === "month") return monthFirstIso(month);
+  if (scope === "custom") return customDate;
   const today = todayIso();
   return today.startsWith(`${month}-`) ? today : monthFirstIso(month);
 }
@@ -194,29 +215,35 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
   const errText = useErrorText();
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
-  const [scope, setScope] = useState<"month" | "remaining">(() => defaultBudgetScope(month));
+  const [scope, setScope] = useState<BudgetScope>(() => defaultBudgetScope(month));
+  const [customDate, setCustomDate] = useState(() => defaultCustomStart(month));
 
   useEffect(() => {
     setScope(defaultBudgetScope(month));
+    setCustomDate(defaultCustomStart(month));
   }, [month]);
 
   function add() {
     if (!categoryId || !amount || Number(amount) <= 0) return;
     upsert.mutate(
-      { month, category_id: categoryId, amount, effective_from: effectiveFromForScope(month, scope) },
+      { month, category_id: categoryId, amount, effective_from: effectiveFromForScope(month, scope, customDate) },
       {
         onSuccess: () => {
           setCategoryId("");
           setAmount("");
           setScope(defaultBudgetScope(month));
+          setCustomDate(defaultCustomStart(month));
         },
       },
     );
   }
 
+  const effectiveFrom = effectiveFromForScope(month, scope, customDate);
+  const customDateValid = scope !== "custom" || isDateInMonth(customDate, month);
+
   return (
     <div className="border-b border-line bg-canvas px-4 py-3.5 sm:px-5">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_190px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_180px_160px_auto]">
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label={t("txn.colCategory")}>
           <option value="">{t("budgets.chooseCategory")}</option>
           {options.map((c) => (
@@ -233,18 +260,31 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <Select value={scope} onChange={(e) => setScope(e.target.value as "month" | "remaining")} aria-label={t("budgets.effectiveScope")}>
+        <Select value={scope} onChange={(e) => setScope(e.target.value as BudgetScope)} aria-label={t("budgets.effectiveScope")}>
           <option value="month">{t("budgets.scopeMonth")}</option>
           <option value="remaining">{t("budgets.scopeRemaining")}</option>
+          <option value="custom">{t("budgets.scopeCustom")}</option>
         </Select>
-        <Button onClick={add} disabled={!categoryId || !amount || upsert.isPending}>
+        {scope === "custom" && (
+          <Input
+            type="date"
+            value={customDate}
+            min={monthFirstIso(month)}
+            max={monthLastIso(month)}
+            aria-label={t("budgets.startDate")}
+            onChange={(e) => setCustomDate(e.target.value)}
+          />
+        )}
+        <Button onClick={add} disabled={!categoryId || !amount || !customDateValid || upsert.isPending}>
           <Plus size={16} /> {t("common.add")}
         </Button>
       </div>
       <p className="mt-2 text-xs text-muted">
         {scope === "month"
           ? t("budgets.scopeMonthHint")
-          : t("budgets.scopeRemainingHint", { date: dateLabel(effectiveFromForScope(month, scope), locale) })}
+          : scope === "custom"
+            ? t("budgets.scopeCustomHint", { date: dateLabel(effectiveFrom, locale) })
+            : t("budgets.scopeRemainingHint", { date: dateLabel(effectiveFrom, locale) })}
       </p>
       {upsert.isError && <p className="mt-2 text-xs text-expense">{errText(upsert.error)}</p>}
     </div>
