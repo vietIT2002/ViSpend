@@ -23,7 +23,7 @@ function useBudgetMutation<TBody>(fn: (body: TBody) => Promise<unknown>) {
 }
 
 export function useUpsertBudgetAllocation() {
-  return useBudgetMutation((body: { month: string; category_id: string; amount: string }) =>
+  return useBudgetMutation((body: { month: string; category_id: string; amount: string; effective_from?: string }) =>
     api.put<BudgetPlan>("/budgets/allocations", body),
   );
 }

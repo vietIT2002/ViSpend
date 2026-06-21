@@ -86,7 +86,9 @@ export interface BudgetAllocationStatus {
   category: string;
   color: string | null;
   amount: string;
+  effective_from: string;
   spent: string;
+  spent_before_effective: string;
   remaining: string;
   usage_percent: number;
   alert: BudgetAlert;

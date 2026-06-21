@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -75,6 +75,23 @@ function shiftMonth(month: string, delta: number) {
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
+function monthFirstIso(month: string) {
+  return `${month}-01`;
+}
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function defaultBudgetScope(month: string): "month" | "remaining" {
+  const now = new Date();
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return month === current && now.getDate() > 5 ? "remaining" : "month";
+}
+function effectiveFromForScope(month: string, scope: "month" | "remaining") {
+  if (scope === "month") return monthFirstIso(month);
+  const today = todayIso();
+  return today.startsWith(`${month}-`) ? today : monthFirstIso(month);
+}
 function monthName(month: string, locale: string) {
   const [y, m] = month.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleString(locale, { month: "long" });
@@ -83,11 +100,15 @@ function monthLabel(month: string, locale: string) {
   const [y, m] = month.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleString(locale, { month: "long", year: "numeric" });
 }
+function dateLabel(value: string, locale: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString(locale, { month: "short", day: "numeric" });
+}
 
 function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; month: string; label: string }) {
   const upsert = useUpsertBudgetAllocation();
   const del = useDeleteBudgetAllocation();
   const t = useT();
+  const locale = useLocale();
   const [amount, setAmount] = useState(item.amount);
 
   function save() {
@@ -97,12 +118,13 @@ function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; m
       return;
     }
     upsert.mutate(
-      { month, category_id: item.category_id, amount: next },
+      { month, category_id: item.category_id, amount: next, effective_from: item.effective_from },
       { onError: () => setAmount(item.amount) },
     );
   }
 
   const remaining = Number(item.remaining);
+  const spentBefore = Number(item.spent_before_effective);
   return (
     <div className="border-b border-line px-4 py-3.5 last:border-0 sm:px-5">
       <div className="grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(120px,1fr)_116px_96px_96px_56px_92px]">
@@ -155,6 +177,12 @@ function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; m
       <div className="mt-2.5">
         <ProgressBar percent={item.usage_percent} alert={item.alert} />
       </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <span>{t("budgets.effectiveFrom", { date: dateLabel(item.effective_from, locale) })}</span>
+        {spentBefore > 0 && (
+          <span>{t("budgets.spentBefore", { amount: vnd(item.spent_before_effective) })}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -162,18 +190,25 @@ function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; m
 function AddAllocation({ month, options }: { month: string; options: { id: string; name: string }[] }) {
   const upsert = useUpsertBudgetAllocation();
   const t = useT();
+  const locale = useLocale();
   const errText = useErrorText();
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
+  const [scope, setScope] = useState<"month" | "remaining">(() => defaultBudgetScope(month));
+
+  useEffect(() => {
+    setScope(defaultBudgetScope(month));
+  }, [month]);
 
   function add() {
     if (!categoryId || !amount || Number(amount) <= 0) return;
     upsert.mutate(
-      { month, category_id: categoryId, amount },
+      { month, category_id: categoryId, amount, effective_from: effectiveFromForScope(month, scope) },
       {
         onSuccess: () => {
           setCategoryId("");
           setAmount("");
+          setScope(defaultBudgetScope(month));
         },
       },
     );
@@ -181,7 +216,7 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
 
   return (
     <div className="border-b border-line bg-canvas px-4 py-3.5 sm:px-5">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px_190px_auto]">
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label={t("txn.colCategory")}>
           <option value="">{t("budgets.chooseCategory")}</option>
           {options.map((c) => (
@@ -198,10 +233,19 @@ function AddAllocation({ month, options }: { month: string; options: { id: strin
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
+        <Select value={scope} onChange={(e) => setScope(e.target.value as "month" | "remaining")} aria-label={t("budgets.effectiveScope")}>
+          <option value="month">{t("budgets.scopeMonth")}</option>
+          <option value="remaining">{t("budgets.scopeRemaining")}</option>
+        </Select>
         <Button onClick={add} disabled={!categoryId || !amount || upsert.isPending}>
           <Plus size={16} /> {t("common.add")}
         </Button>
       </div>
+      <p className="mt-2 text-xs text-muted">
+        {scope === "month"
+          ? t("budgets.scopeMonthHint")
+          : t("budgets.scopeRemainingHint", { date: dateLabel(effectiveFromForScope(month, scope), locale) })}
+      </p>
       {upsert.isError && <p className="mt-2 text-xs text-expense">{errText(upsert.error)}</p>}
     </div>
   );

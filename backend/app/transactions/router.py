@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlmodel import Session
 
 from app.core.db import get_session
@@ -24,6 +24,7 @@ from app.transactions.service import (
     delete_transaction,
     find_by_receipt_hash,
     get_owned_transaction,
+    learn_from_transaction,
     list_transactions,
     set_receipt_path,
     update_transaction,
@@ -61,10 +62,13 @@ def index(
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create(
     body: TransactionCreate,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current: User = Depends(get_current_user),
 ) -> TransactionOut:
-    return create_transaction(session, current, body)
+    txn = create_transaction(session, current, body)
+    background_tasks.add_task(learn_from_transaction, txn.id, session)
+    return txn
 
 
 @router.post("/parse", response_model=ParseSuggestion)
@@ -165,10 +169,13 @@ def show(
 def update(
     txn_id: uuid.UUID,
     body: TransactionUpdate,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current: User = Depends(get_current_user),
 ) -> TransactionOut:
-    return update_transaction(session, current, txn_id, body)
+    txn = update_transaction(session, current, txn_id, body)
+    background_tasks.add_task(learn_from_transaction, txn.id, session)
+    return txn
 
 
 @router.delete("/{txn_id}", status_code=status.HTTP_204_NO_CONTENT)

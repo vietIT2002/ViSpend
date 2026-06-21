@@ -1,5 +1,4 @@
 import uuid
-from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -93,19 +92,23 @@ def _get_or_create_month(session: Session, user_id: uuid.UUID, first: date) -> B
     return bm
 
 
-def _spent_by_category(session: Session, user_id: uuid.UUID, first: date, last: date) -> dict:
-    totals: dict = defaultdict(lambda: ZERO)
+def _spent_for_category(
+    session: Session,
+    user_id: uuid.UUID,
+    category_id: uuid.UUID,
+    start: date,
+    end: date,
+) -> Decimal:
     txns = session.exec(
         select(Transaction).where(
             Transaction.user_id == user_id,
             Transaction.type == TxnType.expense,
-            Transaction.occurred_on >= first,
-            Transaction.occurred_on <= last,
+            Transaction.category_id == category_id,
+            Transaction.occurred_on >= start,
+            Transaction.occurred_on <= end,
         )
     ).all()
-    for t in txns:
-        totals[t.category_id] += t.amount
-    return totals
+    return sum((t.amount for t in txns), ZERO)
 
 
 def _allocations(session: Session, budget_month_id: uuid.UUID) -> list[BudgetAllocation]:
@@ -121,18 +124,23 @@ def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
     available = _available_money(session, user.id, last)
     bm = _get_month(session, user.id, first)
 
-    spent_by_cat = _spent_by_category(session, user.id, first, last)
-    total_spent = sum(spent_by_cat.values(), ZERO)
-
     cats = {c.id: c for c in session.exec(select(Category)).all()}
     allocations = _allocations(session, bm.id) if bm else []
 
     alerts_count = {"safe": 0, "watch": 0, "tight": 0, "over": 0}
     monthly_budget = ZERO
+    total_spent = ZERO
     items: list[BudgetAllocationStatusOut] = []
     for a in allocations:
         monthly_budget += a.amount
-        spent = spent_by_cat.get(a.category_id, ZERO)
+        effective_from = max(a.effective_from, first)
+        spent = _spent_for_category(session, user.id, a.category_id, effective_from, last)
+        spent_before_effective = (
+            _spent_for_category(session, user.id, a.category_id, first, effective_from - timedelta(days=1))
+            if effective_from > first
+            else ZERO
+        )
+        total_spent += spent
         alert = _alert(spent, a.amount)
         alerts_count[alert] += 1
         items.append(
@@ -142,7 +150,9 @@ def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
                 category=cats[a.category_id].name if a.category_id in cats else "Unknown",
                 color=cats[a.category_id].color if a.category_id in cats else None,
                 amount=_q(a.amount),
+                effective_from=effective_from,
                 spent=_q(spent),
+                spent_before_effective=_q(spent_before_effective),
                 remaining=_q(a.amount - spent),
                 usage_percent=_usage_percent(spent, a.amount),
                 alert=alert,
@@ -164,10 +174,18 @@ def get_plan(session: Session, user: User, month: str) -> BudgetPlanOut:
 
 
 def upsert_allocation(
-    session: Session, user: User, month: str, category_id: uuid.UUID, amount: Decimal
+    session: Session,
+    user: User,
+    month: str,
+    category_id: uuid.UUID,
+    amount: Decimal,
+    effective_from: date | None = None,
 ) -> BudgetPlanOut:
     _owned_expense_category(session, user.id, category_id)
     first, last = _month_bounds(month)
+    starts_on = effective_from or first
+    if starts_on < first or starts_on > last:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "budget_effective_from_outside_month")
     bm = _get_or_create_month(session, user.id, first)
 
     existing = _allocations(session, bm.id)
@@ -180,10 +198,18 @@ def upsert_allocation(
     current = next((a for a in existing if a.category_id == category_id), None)
     if current:
         current.amount = amount
+        current.effective_from = starts_on
         current.updated_at = datetime.now(timezone.utc)
         session.add(current)
     else:
-        session.add(BudgetAllocation(budget_month_id=bm.id, category_id=category_id, amount=amount))
+        session.add(
+            BudgetAllocation(
+                budget_month_id=bm.id,
+                category_id=category_id,
+                amount=amount,
+                effective_from=starts_on,
+            )
+        )
     session.commit()
     return get_plan(session, user, month)
 
@@ -214,7 +240,12 @@ def copy_plan(session: Session, user: User, from_month: str, to_month: str) -> B
     for a in src_allocs:
         if a.category_id not in existing_cats:
             session.add(
-                BudgetAllocation(budget_month_id=dst.id, category_id=a.category_id, amount=a.amount)
+                BudgetAllocation(
+                    budget_month_id=dst.id,
+                    category_id=a.category_id,
+                    amount=a.amount,
+                    effective_from=to_first,
+                )
             )
     session.commit()
     return get_plan(session, user, to_month)

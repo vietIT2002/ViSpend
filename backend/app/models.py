@@ -102,6 +102,7 @@ class BudgetAllocation(SQLModel, table=True):
     budget_month_id: uuid.UUID = Field(foreign_key="budgetmonth.id", index=True)
     category_id: uuid.UUID = Field(foreign_key="category.id", index=True)
     amount: Decimal = Field(max_digits=15, decimal_places=2)
+    effective_from: date = Field(index=True)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 

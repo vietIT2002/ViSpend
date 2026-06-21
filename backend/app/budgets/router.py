@@ -33,7 +33,14 @@ def upsert_allocation(
     session: Session = Depends(get_session),
     current: User = Depends(get_current_user),
 ) -> BudgetPlanOut:
-    return service.upsert_allocation(session, current, body.month, body.category_id, body.amount)
+    return service.upsert_allocation(
+        session,
+        current,
+        body.month,
+        body.category_id,
+        body.amount,
+        body.effective_from,
+    )
 
 
 @router.delete("/allocations/{allocation_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,5 +1,11 @@
 from decimal import Decimal
 
+from sqlmodel import select
+
+from app.models import User
+from app.schemas import TransactionCreate
+from app.transactions import service
+
 
 def _category_id(auth_client, name="Food & Drink"):
     return next(c["id"] for c in auth_client.get("/api/categories").json() if c["name"] == name)
@@ -36,6 +42,33 @@ def test_create_list_get_update_delete_transaction(auth_client):
 
     assert auth_client.delete(f"/api/transactions/{txn['id']}").status_code == 204
     assert auth_client.get("/api/transactions").json()["total"] == 0
+
+
+def test_create_transaction_does_not_train_classifier_inline(auth_client, session, monkeypatch):
+    calls = 0
+
+    def fake_learn(*_args):
+        nonlocal calls
+        calls += 1
+
+    monkeypatch.setattr(service.classifier, "learn", fake_learn)
+    user = session.exec(select(User).where(User.username == "atester")).one()
+    category_id = _category_id(auth_client)
+
+    service.create_transaction(
+        session,
+        user,
+        TransactionCreate(
+            type="expense",
+            amount="50000",
+            category_id=category_id,
+            occurred_on="2026-06-13",
+            method="cash",
+            note="lunch",
+        ),
+    )
+
+    assert calls == 0
 
 
 def test_transaction_filters_by_type_and_date(auth_client):

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -18,7 +18,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { LanguageToggle } from "../../components/ui/language-toggle";
 import { cn } from "../../lib/utils";
-import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useErrorText, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
@@ -268,12 +267,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   } = useForm<Form>({ resolver: zodResolver(schema) });
 
   const isLogin = mode === "login";
-
-  useEffect(() => {
-    void api.get("/health", { timeoutMs: 8_000 }).catch(() => {
-      // Best-effort warm-up for cold API hosts; login still reports real errors.
-    });
-  }, []);
 
   async function onSubmit(values: Form) {
     setError(null);

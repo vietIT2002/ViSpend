@@ -23,9 +23,12 @@ def _fund(auth_client, amount="50000000"):
     _txn(auth_client, "income", _cat(auth_client, "income"), amount, "2026-06-01")
 
 
-def _allocate(auth_client, cid, amount, month="2026-06"):
+def _allocate(auth_client, cid, amount, month="2026-06", effective_from=None):
+    payload = {"month": month, "category_id": cid, "amount": amount}
+    if effective_from:
+        payload["effective_from"] = effective_from
     return auth_client.put(
-        "/api/budgets/allocations", json={"month": month, "category_id": cid, "amount": amount}
+        "/api/budgets/allocations", json=payload
     )
 
 
@@ -123,6 +126,43 @@ def test_category_spend_only_that_category(auth_client):
     _txn(auth_client, "expense", c2, "999999", on="2026-06-10")
     item = next(i for i in auth_client.get("/api/budgets?month=2026-06").json()["items"] if i["category_id"] == c1)
     assert item["spent"] == "1500000.00"
+
+
+def test_allocation_effective_from_counts_only_remaining_period(auth_client):
+    _fund(auth_client)
+    cid = _expense_cats(auth_client)[0]
+    _txn(auth_client, "expense", cid, "900000", on="2026-06-10")
+
+    r = _allocate(auth_client, cid, "700000", effective_from="2026-06-21")
+
+    assert r.status_code == 200
+    item = r.json()["items"][0]
+    assert item["effective_from"] == "2026-06-21"
+    assert item["spent"] == "0.00"
+    assert item["spent_before_effective"] == "900000.00"
+    assert item["remaining"] == "700000.00"
+
+
+def test_allocation_effective_from_counts_later_spending(auth_client):
+    _fund(auth_client)
+    cid = _expense_cats(auth_client)[0]
+    _allocate(auth_client, cid, "700000", effective_from="2026-06-21")
+    _txn(auth_client, "expense", cid, "100000", on="2026-06-20")
+    _txn(auth_client, "expense", cid, "250000", on="2026-06-21")
+    _txn(auth_client, "expense", cid, "50000", on="2026-06-30")
+
+    item = auth_client.get("/api/budgets?month=2026-06").json()["items"][0]
+
+    assert item["spent"] == "300000.00"
+    assert item["spent_before_effective"] == "100000.00"
+    assert item["remaining"] == "400000.00"
+
+
+def test_allocation_effective_from_must_be_inside_month(auth_client):
+    _fund(auth_client)
+    cid = _expense_cats(auth_client)[0]
+
+    assert _allocate(auth_client, cid, "700000", effective_from="2026-07-01").status_code == 422
 
 
 def test_available_money_excludes_income_after_the_month(auth_client):

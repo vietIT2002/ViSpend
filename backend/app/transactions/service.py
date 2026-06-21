@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.categories.service import get_accessible_category
+from app.core.db import engine
 from app.intake import classifier
 from app.models import PayMethod, Transaction, TxnType, User
 from app.schemas import TransactionCreate, TransactionUpdate
@@ -74,11 +75,6 @@ def create_transaction(session: Session, user: User, body: TransactionCreate) ->
     session.add(txn)
     session.commit()
     session.refresh(txn)
-    if txn.category_id and (txn.ocr_text or txn.note):
-        try:
-            classifier.learn(session, user, txn.ocr_text or txn.note, txn.category_id)
-        except Exception:
-            pass  # training must never block the transaction
     return txn
 
 
@@ -99,12 +95,31 @@ def update_transaction(
     session.add(txn)
     session.commit()
     session.refresh(txn)
-    if txn.category_id and (txn.ocr_text or txn.note):
-        try:
-            classifier.learn(session, user, txn.ocr_text or txn.note, txn.category_id)
-        except Exception:
-            pass  # training must never block the transaction
     return txn
+
+
+def _learn_from_transaction(session: Session, txn_id: uuid.UUID) -> None:
+    txn = session.get(Transaction, txn_id)
+    if txn is None or not txn.category_id:
+        return
+    note = txn.ocr_text or txn.note
+    if not note:
+        return
+    user = session.get(User, txn.user_id)
+    if user is None:
+        return
+    classifier.learn(session, user, note, txn.category_id)
+
+
+def learn_from_transaction(txn_id: uuid.UUID, session: Session | None = None) -> None:
+    try:
+        if session is not None:
+            _learn_from_transaction(session, txn_id)
+            return
+        with Session(engine) as task_session:
+            _learn_from_transaction(task_session, txn_id)
+    except Exception:
+        pass  # training is best-effort and must never affect user-facing saves
 
 
 def delete_transaction(session: Session, user: User, txn_id: uuid.UUID) -> None:

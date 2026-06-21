@@ -224,6 +224,7 @@ class BudgetAllocationUpsert(BaseModel):
     month: str = Field(pattern=r"^\d{4}-\d{2}$")
     category_id: uuid.UUID
     amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
+    effective_from: date | None = None
 
 
 class BudgetCopyRequest(BaseModel):
@@ -237,7 +238,9 @@ class BudgetAllocationStatusOut(BaseModel):
     category: str
     color: str | None
     amount: Decimal
+    effective_from: date
     spent: Decimal
+    spent_before_effective: Decimal
     remaining: Decimal
     usage_percent: int
     alert: BudgetAlert
