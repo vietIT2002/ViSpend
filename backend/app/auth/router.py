@@ -9,6 +9,7 @@ from app.core.db import get_session
 from app.core.ratelimit import limiter
 from app.core.security import (
     create_access_token,
+    create_refresh_token,
     create_reset_token,
     decode_access_token,
     get_current_user,
@@ -22,11 +23,20 @@ from app.schemas import (
     ForgotPasswordRequest,
     GoogleLoginRequest,
     ProfileUpdate,
+    RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenOut,
     UserOut,
 )
+
+
+def _tokens_for(user: User) -> TokenOut:
+    return TokenOut(
+        access_token=create_access_token(subject=str(user.id)),
+        refresh_token=create_refresh_token(subject=str(user.id)),
+        user=user,
+    )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -56,7 +66,24 @@ def login(
     user = session.exec(select(User).where(User.username == form.username)).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_credentials")
-    return TokenOut(access_token=create_access_token(subject=str(user.id)), user=user)
+    return _tokens_for(user)
+
+
+@router.post("/refresh", response_model=TokenOut)
+@limiter.limit("30/minute")
+def refresh(
+    request: Request,
+    body: RefreshRequest,
+    session: Session = Depends(get_session),
+) -> TokenOut:
+    payload = decode_access_token(body.refresh_token)
+    if not payload or payload.get("type") != "refresh" or "sub" not in payload:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_token")
+    user = session.get(User, uuid.UUID(payload["sub"]))
+    if user is None or not user.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "user_not_found")
+    # Rotate: hand back a fresh refresh token so the 24h idle window slides.
+    return _tokens_for(user)
 
 
 @router.post("/google", response_model=TokenOut)
@@ -98,7 +125,7 @@ def google_login(
     session.add(user)
     session.commit()
     session.refresh(user)
-    return TokenOut(access_token=create_access_token(subject=str(user.id)), user=user)
+    return _tokens_for(user)
 
 
 @router.get("/me", response_model=UserOut)

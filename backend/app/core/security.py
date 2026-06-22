@@ -35,7 +35,15 @@ def create_access_token(subject: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    payload = {"sub": subject, "exp": expire}
+    payload = {"sub": subject, "type": "access", "exp": expire}
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def create_refresh_token(subject: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.refresh_token_expire_minutes
+    )
+    payload = {"sub": subject, "type": "refresh", "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
@@ -62,7 +70,9 @@ def get_current_user(
     session: Session = Depends(get_session),
 ) -> User:
     payload = decode_access_token(token)
-    if payload is None or "sub" not in payload:
+    # Reject tokens issued for other purposes (refresh/reset) being used as a
+    # bearer access token. Older access tokens have no "type" — still accepted.
+    if payload is None or "sub" not in payload or payload.get("type") in {"refresh", "reset"}:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid_token")
     user = session.get(User, uuid.UUID(payload["sub"]))
     if user is None or not user.is_active:

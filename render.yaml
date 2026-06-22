@@ -15,10 +15,13 @@ services:
         generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
-      # 12h so users aren't logged out (and forced through a slow re-login)
-      # every 15 minutes. No refresh-token flow yet, so this is the session length.
+      # Short access token, silently refreshed by the client. The 24h refresh
+      # token is the real session: it rotates on each use and expires only after
+      # 24h of inactivity (idle logout).
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 720
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_MINUTES
+        value: 1440
       - key: CORS_ORIGINS
         sync: false
       - key: GOOGLE_CLIENT_ID

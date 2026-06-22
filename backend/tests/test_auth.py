@@ -24,6 +24,35 @@ def test_register_then_login(client):
     assert r.json()["user"]["username"] == "usertest"
 
 
+def test_login_returns_refresh_and_refresh_rotates(client):
+    client.post("/api/auth/register", json={"username": "refresher", "password": "Password123!"})
+    r = client.post("/api/auth/login", data={"username": "refresher", "password": "Password123!"})
+    tokens = r.json()
+    assert "access_token" in tokens and "refresh_token" in tokens
+
+    # Refresh exchanges the refresh token for a fresh access + refresh pair.
+    r2 = client.post("/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert r2.status_code == 200
+    new = r2.json()
+    assert new["access_token"] and new["refresh_token"]
+    # The new access token works on a protected endpoint.
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {new['access_token']}"})
+    assert me.status_code == 200
+
+
+def test_refresh_token_cannot_be_used_as_access_token(client):
+    client.post("/api/auth/register", json={"username": "mixuser", "password": "Password123!"})
+    r = client.post("/api/auth/login", data={"username": "mixuser", "password": "Password123!"})
+    refresh = r.json()["refresh_token"]
+    # Using the refresh token as a bearer access token must be rejected.
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {refresh}"})
+    assert me.status_code == 401
+
+
+def test_refresh_rejects_invalid_token(client):
+    assert client.post("/api/auth/refresh", json={"refresh_token": "not-a-token"}).status_code == 401
+
+
 def test_register_rejects_weak_password(client):
     r = client.post(
         "/api/auth/register",

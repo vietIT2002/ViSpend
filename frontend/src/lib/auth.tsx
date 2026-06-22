@@ -8,11 +8,12 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
-import { api, setUnauthorizedHandler } from "./api";
+import { api, clearTokens, setTokens, setUnauthorizedHandler } from "./api";
 import type { User } from "../types";
 
 interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   user: User;
 }
 
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setUser(await api.get<User>("/auth/me", { timeoutMs: SESSION_CHECK_TIMEOUT_MS }));
     } catch {
-      localStorage.removeItem("vispend_token");
+      clearTokens();
       setToken(null);
       setUser(null);
     } finally {
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     form.set("username", username);
     form.set("password", password);
     const data = await api.post<LoginResponse>("/auth/login", form);
-    localStorage.setItem("vispend_token", data.access_token);
+    setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setToken(data.access_token);
   }, []);
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await api.post<LoginResponse>("/auth/google", {
       access_token: accessToken,
     });
-    localStorage.setItem("vispend_token", data.access_token);
+    setTokens(data.access_token, data.refresh_token);
     setUser(data.user);
     setToken(data.access_token);
   }, []);
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("vispend_token");
+    clearTokens();
     setToken(null);
     setUser(null);
   }, []);
