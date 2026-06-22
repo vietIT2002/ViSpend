@@ -15,8 +15,10 @@ services:
         generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
+      # 12h so users aren't logged out (and forced through a slow re-login)
+      # every 15 minutes. No refresh-token flow yet, so this is the session length.
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 15
+        value: 720
       - key: CORS_ORIGINS
         sync: false
       - key: GOOGLE_CLIENT_ID

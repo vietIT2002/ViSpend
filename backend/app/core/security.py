@@ -11,7 +11,16 @@ from app.core.config import settings
 from app.core.db import get_session
 from app.models import User
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+# OWASP-recommended argon2id cost (m=19MiB, t=2, p=1). Lighter than passlib's
+# defaults (64MiB/t=3/p=4) so login is noticeably faster on small shared CPUs
+# while staying secure. Existing hashes keep their own params and still verify.
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__time_cost=2,
+    argon2__memory_cost=19456,
+    argon2__parallelism=1,
+)
 
 
 def hash_password(password: str) -> str:

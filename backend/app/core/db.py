@@ -16,7 +16,14 @@ def connect_args(url: str) -> dict:
 
 
 engine = create_engine(
-    settings.database_url, echo=False, connect_args=connect_args(settings.database_url)
+    settings.database_url,
+    echo=False,
+    connect_args=connect_args(settings.database_url),
+    # After the instance idles, pooled connections may be dead (Supabase/PgBouncer
+    # drops them). pre_ping transparently replaces a dead connection instead of
+    # failing the first request; recycle caps connection age.
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 
 
