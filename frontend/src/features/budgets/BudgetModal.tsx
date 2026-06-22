@@ -79,7 +79,7 @@ export function BudgetModal({
         : dateLabel(effectiveFrom, locale);
 
   return (
-    <Modal open={open} onClose={onClose} title={t("budgets.addBudget")}>
+    <Modal open={open} onClose={onClose} title={t("budgets.addBudget")} align="start">
       <div className="space-y-4">
         <div>
           <label className={LABEL}>{t("txn.colCategory")}</label>

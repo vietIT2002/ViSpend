@@ -56,7 +56,7 @@ function ProgressBar({ percent, alert }: { percent: number; alert: BudgetAlert }
   );
 }
 
-function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; month: string; label: string }) {
+function AllocationCard({ item, month, label }: { item: BudgetAllocationStatus; month: string; label: string }) {
   const upsert = useUpsertBudgetAllocation();
   const del = useDeleteBudgetAllocation();
   const t = useT();
@@ -82,100 +82,93 @@ function AllocationRow({ item, month, label }: { item: BudgetAllocationStatus; m
   const spentBefore = Number(item.spent_before_effective);
 
   return (
-    <div className={cn("border-b border-line px-4 py-4 last:border-0 sm:px-5", editing && "bg-brand-soft/60")}>
-      <div className="grid grid-cols-1 items-center gap-x-5 gap-y-3 sm:grid-cols-[minmax(140px,1.3fr)_minmax(0,2fr)_120px_auto]">
-        {/* category */}
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="h-8 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color ?? "#cbd5d1" }} />
-          <div className="min-w-0">
-            <p className="truncate font-medium text-ink">{label}</p>
-            <p className="truncate text-xs text-muted">
-              {t("budgets.effectiveFrom", { date: dateLabel(item.effective_from, locale) })}
-              {spentBefore > 0 && ` · ${t("budgets.spentBefore", { amount: vnd(item.spent_before_effective) })}`}
-            </p>
-          </div>
+    <div className={cn("rounded-xl border border-line bg-surface p-4 transition-colors", editing && "border-brand bg-brand-soft/50")}>
+      {/* header: category + status + actions */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="h-7 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color ?? "#cbd5d1" }} />
+          <p className="truncate font-semibold text-ink">{label}</p>
         </div>
-
-        {/* progress, or inline amount editor with explicit Save/Cancel */}
-        {editing ? (
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">₫</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                autoFocus
-                className="nums h-9 pl-7"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") save();
-                  if (e.key === "Escape") cancel();
-                }}
-              />
-            </div>
-            <Button className="h-9" onClick={save} disabled={upsert.isPending}>
-              {t("common.save")}
-            </Button>
-            <Button variant="secondary" className="h-9" onClick={cancel}>
-              {t("common.cancel")}
-            </Button>
-          </div>
-        ) : (
-          <div>
-            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
-              <span className="nums font-semibold text-ink">{vnd(item.spent)}</span>
-              <span className="nums text-muted">/ {vnd(item.amount)}</span>
-            </div>
-            <ProgressBar percent={item.usage_percent} alert={item.alert} />
-          </div>
-        )}
-
-        {/* remaining */}
-        <div className="text-left sm:text-right">
-          <p className="text-[11px] uppercase tracking-[0.05em] text-muted">
-            {remaining < 0 ? t("budgets.alert.over") : t("budgets.left")}
-          </p>
-          <p className={cn("nums text-sm font-bold", remaining < 0 ? "text-expense" : "text-ink")}>
-            {remaining < 0 ? `−${vnd(Math.abs(remaining))}` : vnd(item.remaining)}
-          </p>
-        </div>
-
-        {/* status + actions */}
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <Badge tone={ALERT_TONE[item.alert]}>{t(ALERT_LABEL[item.alert])}</Badge>
           {!editing && (
             <>
-              <Button
-                variant="secondary"
-                className="size-8 px-0"
-                aria-label={t("common.edit")}
-                onClick={() => setEditing(true)}
-              >
-                <Pencil size={14} />
+              <Button variant="secondary" className="size-7 px-0" aria-label={t("common.edit")} onClick={() => setEditing(true)}>
+                <Pencil size={13} />
               </Button>
               <Button
                 variant="danger"
-                className="size-8 px-0"
+                className="size-7 px-0"
                 aria-label={t("budgets.removeAria")}
                 disabled={del.isPending}
                 onClick={() => del.mutate(item.id)}
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
               </Button>
             </>
           )}
         </div>
       </div>
+
+      {editing ? (
+        <div className="mt-3 flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">₫</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              autoFocus
+              className="nums h-9 pl-7"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") save();
+                if (e.key === "Escape") cancel();
+              }}
+            />
+          </div>
+          <Button className="h-9" onClick={save} disabled={upsert.isPending}>
+            {t("common.save")}
+          </Button>
+          <Button variant="secondary" className="h-9" onClick={cancel}>
+            {t("common.cancel")}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="nums font-semibold text-charcoal">{vnd(item.spent)}</span>
+            <span className="nums text-muted">/ {vnd(item.amount)}</span>
+          </div>
+          <div className="mt-1.5">
+            <ProgressBar percent={item.usage_percent} alert={item.alert} />
+          </div>
+          <div className="mt-2.5 flex items-end justify-between gap-3">
+            <p className="min-w-0 truncate text-xs text-muted">
+              {t("budgets.effectiveFrom", { date: dateLabel(item.effective_from, locale) })}
+              {spentBefore > 0 && ` · ${t("budgets.spentBefore", { amount: vnd(item.spent_before_effective) })}`}
+            </p>
+            <div className="shrink-0 text-right">
+              <span className="block text-[10px] font-medium uppercase tracking-[0.05em] text-muted">
+                {remaining < 0 ? t("budgets.alert.over") : t("budgets.left")}
+              </span>
+              <span className={cn("nums text-sm font-bold", remaining < 0 ? "text-expense" : "text-brand-dark")}>
+                {remaining < 0 ? `−${vnd(Math.abs(remaining))}` : vnd(item.remaining)}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function Kpi({ label, value, neg }: { label: string; value: string; neg?: boolean }) {
+function Kpi({ label, value, tone }: { label: string; value: string; tone?: "ink" | "good" | "bad" }) {
+  const color = tone === "good" ? "text-brand-dark" : tone === "bad" ? "text-expense" : "text-ink";
   return (
     <div>
       <p className="text-xs text-muted">{label}</p>
-      <p className={cn("nums text-xl font-bold tracking-tight", neg ? "text-expense" : "text-ink")}>{value}</p>
+      <p className={cn("nums text-xl font-bold tracking-tight", color)}>{value}</p>
     </div>
   );
 }
@@ -242,7 +235,11 @@ export function BudgetsPage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:items-center">
           <Kpi label={t("budgets.totalBudget")} value={vnd(plan?.monthly_budget ?? 0)} />
           <Kpi label={t("budgets.spent")} value={vnd(plan?.total_spent ?? 0)} />
-          <Kpi label={t("budgets.left")} value={vnd(plan?.total_remaining ?? 0)} neg={totalRemaining < 0} />
+          <Kpi
+            label={t("budgets.left")}
+            value={vnd(plan?.total_remaining ?? 0)}
+            tone={totalRemaining < 0 ? "bad" : "good"}
+          />
           {cd.state === "current" ? (
             <div className="lg:border-l lg:border-line lg:pl-5">
               <p className="text-xs text-muted">
@@ -301,9 +298,11 @@ export function BudgetsPage() {
             {t("budgets.noBudgetsYet", { month: monthName(month, locale) })}
           </p>
         ) : (
-          items.map((item) => (
-            <AllocationRow key={item.id} item={item} month={month} label={labelFor(item.category_id, item.category)} />
-          ))
+          <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-2">
+            {items.map((item) => (
+              <AllocationCard key={item.id} item={item} month={month} label={labelFor(item.category_id, item.category)} />
+            ))}
+          </div>
         )}
       </Card>
 
