@@ -277,6 +277,7 @@ export const en = {
   "budgets.availableMoney": "Available money",
   "budgets.availableHint":
     "Income minus expenses through the end of {month}. Your total category budgets can't exceed this.",
+  "budgets.addBudget": "Add budget",
   "budgets.categoryBudgets": "Category budgets",
   "budgets.categoryBudgetsHint": "Set each limit. Spent and remaining update from transactions.",
   "budgets.total": "{amount} total",
@@ -294,7 +295,7 @@ export const en = {
   "budgets.effectiveFrom": "Counts from {date}",
   "budgets.spentBefore": "{amount} spent before budget start",
   "budgets.removeAria": "Remove budget",
-  "budgets.noBudgetsYet": "No category budgets yet. Add one above to start planning {month}.",
+  "budgets.noBudgetsYet": "No category budgets yet. Add one to start planning {month}.",
   "budgets.dashboardPreview": "Dashboard preview",
   "budgets.preview": "Preview",
   "budgets.previewSentence":

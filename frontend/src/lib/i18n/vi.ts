@@ -279,6 +279,7 @@ export const vi: Dict = {
   "budgets.availableMoney": "Tiền khả dụng",
   "budgets.availableHint":
     "Thu trừ chi tính đến hết {month}. Tổng ngân sách các danh mục không được vượt quá số này.",
+  "budgets.addBudget": "Thêm ngân sách",
   "budgets.categoryBudgets": "Ngân sách theo danh mục",
   "budgets.categoryBudgetsHint": "Đặt hạn mức từng danh mục. Đã chi và còn lại cập nhật từ giao dịch.",
   "budgets.total": "Tổng {amount}",
@@ -296,7 +297,7 @@ export const vi: Dict = {
   "budgets.effectiveFrom": "Tính từ {date}",
   "budgets.spentBefore": "Đã chi {amount} trước khi lập ngân sách",
   "budgets.removeAria": "Xoá ngân sách",
-  "budgets.noBudgetsYet": "Chưa có ngân sách nào. Thêm ở trên để bắt đầu lập kế hoạch cho {month}.",
+  "budgets.noBudgetsYet": "Chưa có ngân sách nào. Thêm một mục để bắt đầu lập kế hoạch cho {month}.",
   "budgets.dashboardPreview": "Xem trước bảng điều khiển",
   "budgets.preview": "Xem trước",
   "budgets.previewSentence":
