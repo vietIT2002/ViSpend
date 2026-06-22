@@ -8,8 +8,12 @@ import { ColorSwatchPicker, DEFAULT_CATEGORY_COLOR } from "../../components/ui/c
 import { useErrorText, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import type { Account, AccountType } from "../../types";
+import { AccountLogo } from "./AccountLogo";
+import { BANK_BRANDS, EWALLET_BRANDS } from "./banks";
 import { useCreateAccount, useUpdateAccount } from "./hooks";
 import { ACCOUNT_TYPES, TYPE_EMOJI } from "./util";
+
+const EWALLET_CODES = new Set(EWALLET_BRANDS.map((b) => b.code));
 
 const LABEL = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-muted";
 
@@ -33,6 +37,7 @@ export function AccountModal({
   const [opening, setOpening] = useState("");
   const [icon, setIcon] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_CATEGORY_COLOR);
+  const [brand, setBrand] = useState<string>("");
   const pending = create.isPending || update.isPending;
   const error = create.error ?? update.error;
 
@@ -44,14 +49,25 @@ export function AccountModal({
       setOpening(editing.opening_balance);
       setIcon(editing.icon ?? "");
       setColor(editing.color ?? DEFAULT_CATEGORY_COLOR);
+      setBrand(editing.brand ?? "");
     } else {
       setName("");
       setType("bank");
       setOpening("");
       setIcon("");
       setColor(DEFAULT_CATEGORY_COLOR);
+      setBrand("");
     }
   }, [open, editing]);
+
+  // Picking a brand fills the logo, suggests the name (if blank) and the type.
+  function onBrandChange(code: string) {
+    setBrand(code);
+    if (!code) return;
+    const found = [...BANK_BRANDS, ...EWALLET_BRANDS].find((b) => b.code === code);
+    if (found && !name.trim()) setName(found.name);
+    setType(EWALLET_CODES.has(code) ? "ewallet" : "bank");
+  }
 
   function submit() {
     if (!name.trim() || Number(opening || 0) < 0) return;
@@ -59,6 +75,7 @@ export function AccountModal({
       name: name.trim(),
       type,
       opening_balance: opening.trim() || "0",
+      brand: brand || null,
       icon: icon.trim() || null,
       color,
     };
@@ -72,6 +89,29 @@ export function AccountModal({
   return (
     <Modal open={open} onClose={onClose} title={t(isEdit ? "accounts.editTitle" : "accounts.newTitle")} align="start">
       <div className="space-y-4">
+        <div>
+          <label className={LABEL}>{t("accounts.brand")}</label>
+          <div className="flex items-center gap-3">
+            <AccountLogo acc={{ brand, icon, type, color }} size={44} />
+            <Select className="flex-1" value={brand} onChange={(e) => onBrandChange(e.target.value)}>
+              <option value="">{t("accounts.brandNone")}</option>
+              <optgroup label={t("accounts.banks")}>
+                {BANK_BRANDS.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={t("accounts.ewallets")}>
+                {EWALLET_BRANDS.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className={LABEL}>{t("accounts.name")}</label>

@@ -7,28 +7,22 @@ import { useErrorText, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import { cn, vnd } from "../../lib/utils";
 import type { Account } from "../../types";
+import { AccountLogo } from "./AccountLogo";
 import { AccountModal } from "./AccountModal";
 import { TransferModal } from "./TransferModal";
 import { useAccounts, useDeleteAccount, useUpdateAccount } from "./hooks";
-import { accountEmoji } from "./util";
 
 function AccountCard({ acc, onEdit }: { acc: Account; onEdit: (a: Account) => void }) {
   const t = useT();
   const errText = useErrorText();
   const update = useUpdateAccount();
   const del = useDeleteAccount();
-  const color = acc.color ?? "#5b6770";
   const balance = Number(acc.balance);
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4">
       <div className="flex min-w-0 items-center gap-3">
-        <span
-          className="grid size-10 shrink-0 place-items-center rounded-lg text-lg"
-          style={{ backgroundColor: color + "1f" }}
-        >
-          {accountEmoji(acc)}
-        </span>
+        <AccountLogo acc={acc} />
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink">{acc.name}</p>
           <p className="text-xs text-muted">{t(`accounts.type.${acc.type}` as TKey)}</p>
