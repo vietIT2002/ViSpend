@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models import PayMethod, TxnType
+from app.models import AccountType, PayMethod, TxnType
 
 USERNAME_RE = re.compile(r"^[a-z0-9]{3,20}$")
 
@@ -138,6 +138,7 @@ class TransactionCreate(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
     category_id: uuid.UUID
     occurred_on: date
+    account_id: uuid.UUID | None = None
     method: PayMethod = PayMethod.cash
     note: str | None = Field(default=None, max_length=255)
     ocr_text: str | None = Field(default=None, max_length=5000)
@@ -148,6 +149,7 @@ class TransactionUpdate(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0, max_digits=15, decimal_places=2)
     category_id: uuid.UUID | None = None
     occurred_on: date | None = None
+    account_id: uuid.UUID | None = None
     method: PayMethod | None = None
     note: str | None = Field(default=None, max_length=255)
 
@@ -160,9 +162,74 @@ class TransactionOut(BaseModel):
     amount: Decimal
     category_id: uuid.UUID
     occurred_on: date
+    account_id: uuid.UUID | None
     method: PayMethod
     note: str | None
     has_receipt: bool
+    created_at: datetime
+
+
+# ---- Accounts / wallets ----
+class AccountCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    type: AccountType = AccountType.cash
+    opening_balance: Decimal = Field(default=0, ge=0, max_digits=15, decimal_places=2)
+    brand: str | None = Field(default=None, max_length=40)
+    icon: str | None = Field(default=None, max_length=16)
+    color: str | None = Field(default=None, max_length=20)
+
+
+class AccountUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    type: AccountType | None = None
+    opening_balance: Decimal | None = Field(default=None, ge=0, max_digits=15, decimal_places=2)
+    brand: str | None = Field(default=None, max_length=40)
+    icon: str | None = Field(default=None, max_length=16)
+    color: str | None = Field(default=None, max_length=20)
+    archived: bool | None = None
+
+
+class AccountOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    type: AccountType
+    opening_balance: Decimal
+    brand: str | None
+    icon: str | None
+    color: str | None
+    archived: bool
+    balance: Decimal  # computed current balance
+
+
+class AccountsSummary(BaseModel):
+    total_net_worth: Decimal
+    accounts: list[AccountOut]
+
+
+class TransferCreate(BaseModel):
+    from_account_id: uuid.UUID
+    to_account_id: uuid.UUID
+    amount: Decimal = Field(gt=0, max_digits=15, decimal_places=2)
+    occurred_on: date
+    note: str | None = Field(default=None, max_length=255)
+
+    @field_validator("to_account_id")
+    @classmethod
+    def _distinct(cls, v: uuid.UUID, info) -> uuid.UUID:
+        if info.data.get("from_account_id") == v:
+            raise ValueError("from and to accounts must differ")
+        return v
+
+
+class TransferOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    from_account_id: uuid.UUID
+    to_account_id: uuid.UUID
+    amount: Decimal
+    occurred_on: date
+    note: str | None
     created_at: datetime
 
 

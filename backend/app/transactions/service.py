@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from app.accounts.service import get_owned_account
 from app.categories.service import get_accessible_category
 from app.core.db import engine
 from app.intake import classifier
@@ -39,6 +40,7 @@ def list_transactions(
     type_: TxnType | None = None,
     category_id: uuid.UUID | None = None,
     method: PayMethod | None = None,
+    account_id: uuid.UUID | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
     page: int = 1,
@@ -51,6 +53,8 @@ def list_transactions(
         filters.append(Transaction.category_id == category_id)
     if method is not None:
         filters.append(Transaction.method == method)
+    if account_id is not None:
+        filters.append(Transaction.account_id == account_id)
     if from_date is not None:
         filters.append(Transaction.occurred_on >= from_date)
     if to_date is not None:
@@ -71,6 +75,8 @@ def list_transactions(
 
 def create_transaction(session: Session, user: User, body: TransactionCreate) -> Transaction:
     get_accessible_category(session, user, body.category_id, body.type)
+    if body.account_id is not None:
+        get_owned_account(session, user, body.account_id)
     txn = Transaction(user_id=user.id, **body.model_dump())
     session.add(txn)
     session.commit()
@@ -89,6 +95,8 @@ def update_transaction(
     updates = body.model_dump(exclude_unset=True)
     next_category_id = updates.get("category_id", txn.category_id)
     get_accessible_category(session, user, next_category_id, txn.type)
+    if updates.get("account_id") is not None:
+        get_owned_account(session, user, updates["account_id"])
     for key, value in updates.items():
         setattr(txn, key, value)
     txn.updated_at = datetime.now(timezone.utc)

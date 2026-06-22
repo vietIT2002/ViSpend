@@ -18,6 +18,13 @@ class PayMethod(str, Enum):
     card = "card"
 
 
+class AccountType(str, Enum):
+    cash = "cash"
+    bank = "bank"
+    ewallet = "ewallet"
+    credit = "credit"
+
+
 def _uuid() -> uuid.UUID:
     return uuid.uuid4()
 
@@ -58,6 +65,22 @@ class Category(SQLModel, table=True):
     key: str | None = Field(default=None, index=True)
 
 
+class Account(SQLModel, table=True):
+    # A place that holds money (cash wallet, bank account, e-wallet, credit card).
+    # Current balance is computed, not stored: opening_balance + income − expense
+    # − transfers out + transfers in.
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+    name: str
+    type: AccountType = AccountType.cash
+    opening_balance: Decimal = Field(default=0, max_digits=15, decimal_places=2)
+    brand: str | None = None  # logo key (e.g. "tpbank"); null → use icon/color
+    icon: str | None = None
+    color: str | None = None
+    archived: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=_now)
+
+
 class Transaction(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
@@ -65,6 +88,9 @@ class Transaction(SQLModel, table=True):
     amount: Decimal = Field(max_digits=15, decimal_places=2)
     category_id: uuid.UUID = Field(foreign_key="category.id", index=True)
     occurred_on: date = Field(index=True)
+    # Which account the money moved in/out of. Nullable for legacy rows migrated
+    # before accounts existed; required for new transactions via the API.
+    account_id: uuid.UUID | None = Field(default=None, foreign_key="account.id", index=True)
     method: PayMethod = PayMethod.cash
     note: str | None = None
     receipt_path: str | None = None
@@ -105,6 +131,19 @@ class BudgetAllocation(SQLModel, table=True):
     effective_from: date = Field(index=True)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
+
+
+class Transfer(SQLModel, table=True):
+    # Moving money between the user's own accounts. Not income or expense:
+    # net worth is unchanged, only the two account balances move.
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+    from_account_id: uuid.UUID = Field(foreign_key="account.id", index=True)
+    to_account_id: uuid.UUID = Field(foreign_key="account.id", index=True)
+    amount: Decimal = Field(max_digits=15, decimal_places=2)
+    occurred_on: date = Field(index=True)
+    note: str | None = None
+    created_at: datetime = Field(default_factory=_now)
 
 
 class CategoryClassifier(SQLModel, table=True):

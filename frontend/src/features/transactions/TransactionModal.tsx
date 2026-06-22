@@ -11,6 +11,8 @@ import { Modal } from "../../components/ui/modal";
 import { Select } from "../../components/ui/select";
 import { DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker";
 import { useCategories, useCreateCategory } from "../categories/hooks";
+import { useAccounts } from "../accounts/hooks";
+import { accountEmoji } from "../accounts/util";
 import { useCategoryLabel, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import type { ParseSuggestion, Transaction, TxnType } from "../../types";
@@ -21,6 +23,7 @@ const schema = z.object({
   amount: z.string().refine((v) => Number(v) > 0, "txnModal.amountError"),
   category_id: z.string().uuid("txnModal.categoryError"),
   occurred_on: z.string().min(1),
+  account_id: z.string().optional(),
   method: z.enum(["cash", "transfer", "card"]),
   note: z.string().optional(),
 });
@@ -47,6 +50,8 @@ export function TransactionModal({
   ocrText?: string;
 }) {
   const { data: cats = [] } = useCategories();
+  const { data: accountsData } = useAccounts();
+  const accounts = accountsData?.accounts ?? [];
   const createCat = useCreateCategory();
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
@@ -62,6 +67,7 @@ export function TransactionModal({
 
   const type = watch("type");
   const categoryId = watch("category_id");
+  const accountId = watch("account_id");
   const options = cats
     .filter((c) => c.type === type)
     .map((c) => ({ id: c.id, name: categoryLabel(c) }));
@@ -75,6 +81,7 @@ export function TransactionModal({
         amount: editing.amount,
         category_id: editing.category_id,
         occurred_on: editing.occurred_on,
+        account_id: editing.account_id ?? "",
         method: editing.method,
         note: editing.note ?? "",
       });
@@ -84,13 +91,21 @@ export function TransactionModal({
         amount: prefill.amount ?? "",
         category_id: prefill.category_id ?? "",
         occurred_on: prefill.occurred_on,
+        account_id: "",
         method: prefill.method ?? "cash",
         note: prefill.note ?? "",
       });
     } else {
-      reset({ type: defaultType, method: "cash", occurred_on: today(), note: "" });
+      reset({ type: defaultType, method: "cash", occurred_on: today(), account_id: "", note: "" });
     }
   }, [open, editing, defaultType, prefill, reset]);
+
+  // Default to the first account for new transactions once accounts have loaded.
+  useEffect(() => {
+    if (open && !isEdit && !accountId && accounts.length) {
+      setValue("account_id", accounts[0].id);
+    }
+  }, [open, isEdit, accountId, accounts, setValue]);
 
   // Keep a category valid for the selected type.
   useEffect(() => {
@@ -105,10 +120,12 @@ export function TransactionModal({
   }
 
   function submit(data: Form) {
+    // Empty string isn't a valid UUID — send null so the API treats it as "no account".
+    const body = { ...data, account_id: data.account_id || null };
     if (isEdit && editing) {
-      update.mutate({ id: editing.id, body: data }, { onSuccess: onClose });
+      update.mutate({ id: editing.id, body }, { onSuccess: onClose });
     } else {
-      create.mutate({ ...data, ocr_text: ocrText, receipt_hash: pendingHash }, {
+      create.mutate({ ...body, ocr_text: ocrText, receipt_hash: pendingHash }, {
         onSuccess: async (created: Transaction) => {
           if (pendingImage) {
             try {
@@ -162,11 +179,17 @@ export function TransactionModal({
             <Input type="date" className="nums" {...register("occurred_on")} />
           </div>
           <div>
-            <Label>{t("txnModal.method")}</Label>
-            <Select {...register("method")}>
-              <option value="cash">{t("method.cash")}</option>
-              <option value="transfer">{t("method.transfer")}</option>
-              <option value="card">{t("method.card")}</option>
+            <Label>{t("txnModal.account")}</Label>
+            <Select {...register("account_id")}>
+              {accounts.length === 0 ? (
+                <option value="">{t("txnModal.noAccount")}</option>
+              ) : (
+                accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {accountEmoji(a)} {a.name}
+                  </option>
+                ))
+              )}
             </Select>
           </div>
         </div>

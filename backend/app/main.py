@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app.accounts.router import router as accounts_router
 from app.auth.router import router as auth_router
 from app.budgets.router import router as budgets_router
 from app.categories.router import router as categories_router
@@ -61,3 +62,4 @@ app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(dashboard_router)
 app.include_router(budgets_router)
+app.include_router(accounts_router)

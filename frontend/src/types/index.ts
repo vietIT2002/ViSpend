@@ -1,5 +1,33 @@
 export type TxnType = "expense" | "income";
 export type PayMethod = "cash" | "transfer" | "card";
+export type AccountType = "cash" | "bank" | "ewallet" | "credit";
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  opening_balance: string;
+  brand: string | null;
+  icon: string | null;
+  color: string | null;
+  archived: boolean;
+  balance: string; // computed current balance
+}
+
+export interface AccountsSummary {
+  total_net_worth: string;
+  accounts: Account[];
+}
+
+export interface Transfer {
+  id: string;
+  from_account_id: string;
+  to_account_id: string;
+  amount: string;
+  occurred_on: string;
+  note: string | null;
+  created_at: string;
+}
 
 export interface User {
   id: string;
@@ -28,6 +56,7 @@ export interface Transaction {
   amount: string;
   category_id: string;
   occurred_on: string;
+  account_id: string | null;
   method: PayMethod;
   note: string | null;
   created_at: string;
