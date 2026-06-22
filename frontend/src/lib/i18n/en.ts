@@ -272,6 +272,7 @@ export const en = {
   "budgets.spent": "Spent",
   "budgets.left": "Left",
   "budgets.spentOfBudget": "Spent of budget",
+  "budgets.perDay": "/ day to stay on track",
   "budgets.dailyPaceOne": "≈ {amount} / day for the remaining {days} day",
   "budgets.dailyPaceOther": "≈ {amount} / day for the remaining {days} days",
   "budgets.availableMoney": "Available money",

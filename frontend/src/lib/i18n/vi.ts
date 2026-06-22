@@ -274,6 +274,7 @@ export const vi: Dict = {
   "budgets.spent": "Đã chi",
   "budgets.left": "Còn lại",
   "budgets.spentOfBudget": "Đã chi trên ngân sách",
+  "budgets.perDay": "/ ngày để đúng kế hoạch",
   "budgets.dailyPaceOne": "≈ {amount} / ngày cho {days} ngày còn lại",
   "budgets.dailyPaceOther": "≈ {amount} / ngày cho {days} ngày còn lại",
   "budgets.availableMoney": "Tiền khả dụng",

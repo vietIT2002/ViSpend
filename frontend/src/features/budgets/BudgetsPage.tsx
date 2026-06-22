@@ -247,11 +247,8 @@ export function BudgetsPage() {
                 {t(cd.daysLeft !== 1 ? "budgets.daysLeftOther" : "budgets.daysLeftOne")}
               </p>
               {monthlyBudget > 0 && cd.daysLeft > 0 && totalRemaining > 0 && (
-                <p className="nums mt-0.5 text-sm font-semibold text-ink">
-                  {t(cd.daysLeft !== 1 ? "budgets.dailyPaceOther" : "budgets.dailyPaceOne", {
-                    amount: vnd(dailyPace),
-                    days: cd.daysLeft,
-                  })}
+                <p className="mt-0.5 text-xs text-muted">
+                  ≈ <span className="nums font-semibold text-ink">{vnd(dailyPace)}</span> {t("budgets.perDay")}
                 </p>
               )}
             </div>
