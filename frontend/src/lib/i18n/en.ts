@@ -57,10 +57,11 @@ export const en = {
   "nav.signOut": "Sign out",
   "nav.openMenu": "Open menu",
   "nav.closeMenu": "Close menu",
+  "nav.main": "Main navigation",
   "nav.skipToContent": "Skip to content",
-  "logout.title": "Log out",
-  "logout.confirm": "Are you sure you want to log out?",
-  "logout.action": "Log out",
+  "logout.title": "Sign out?",
+  "logout.confirm": "You'll need to sign in again to see your data.",
+  "logout.action": "Sign out",
 
   // Language switcher
   "language.label": "Language",

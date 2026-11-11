@@ -57,9 +57,10 @@ export const vi: Dict = {
   "nav.signOut": "Đăng xuất",
   "nav.openMenu": "Mở menu",
   "nav.closeMenu": "Đóng menu",
+  "nav.main": "Điều hướng chính",
   "nav.skipToContent": "Tới nội dung chính",
-  "logout.title": "Đăng xuất",
-  "logout.confirm": "Bạn có chắc muốn đăng xuất?",
+  "logout.title": "Đăng xuất?",
+  "logout.confirm": "Bạn sẽ cần đăng nhập lại để xem dữ liệu.",
   "logout.action": "Đăng xuất",
 
   // Language switcher

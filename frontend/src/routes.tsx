@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { App } from "./App";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Skeleton } from "./components/ui/skeleton";
 
 // Route-level code splitting: each page is its own chunk, loaded only when
 // navigated to. This keeps heavy dependencies (e.g. Recharts on the dashboard)
@@ -38,7 +39,16 @@ const AccountsPage = lazy(() =>
 
 function withSuspense(element: ReactNode) {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted">Loading…</div>}>{element}</Suspense>
+    <Suspense
+      fallback={
+        <div className="space-y-4" aria-busy="true">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
+      {element}
+    </Suspense>
   );
 }
 
