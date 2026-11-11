@@ -55,6 +55,7 @@ import { cn } from "../../lib/utils";
 import { NeedsAttention } from "../budgets/BudgetPulse";
 import { useCategories } from "../categories/hooks";
 import { useTransactions } from "../transactions/hooks";
+import { pairCategoryTotals } from "./categoryPairs";
 import { useCashflow, useCategorySpend, useSummary, useTrend } from "./hooks";
 
 // Chart colours mirror the --color-chart-* tokens in index.css: one hue per
@@ -196,6 +197,7 @@ function ChartCard({
   empty,
   table,
   height = 280,
+  notice,
   children,
 }: {
   id: string;
@@ -208,6 +210,7 @@ function ChartCard({
   empty: { title: string; body: string } | null;
   table: TableSpec;
   height?: number;
+  notice?: ReactNode;
   children: ReactNode;
 }) {
   const t = useT();
@@ -233,6 +236,7 @@ function ChartCard({
         }
       />
       <div className="p-4" style={{ minHeight: height + 32 }}>
+        {ready && notice}
         {loading ? (
           <Skeleton className="w-full" style={{ height }} />
         ) : error ? (
@@ -336,6 +340,7 @@ export function DashboardPage() {
   const cur = useSummary(range.from, range.to);
   const prev = useSummary(prevRange.from, prevRange.to);
   const spend = useCategorySpend(range.from, range.to);
+  const prevSpend = useCategorySpend(prevRange.from, prevRange.to);
   const flow = useTrend(flowGranularity, range.from, range.to);
   const daily = useTrend("day", range.from, range.to);
   const cash = useCashflow(6);
@@ -395,16 +400,8 @@ export function DashboardPage() {
   }));
   const hasFlow = flowData.some((d) => d.income !== 0 || d.expense !== 0);
 
-  const categoryRows = (spend.data ?? [])
-    .map((r) => ({
-      key: r.category_id,
-      category: catName(r.category_id, r.category),
-      current: num(r.total),
-      previous: num(r.prev_total),
-      percent: r.percent,
-    }))
-    .sort((a, b) => b.current - a.current)
-    .slice(0, 8);
+  const categoryRows = pairCategoryTotals(spend.data, prevSpend.data).map((r) => ({ ...r, category: catName(r.key, r.category) }));
+  const showPrevCategory = !prevSpend.isError || Boolean(prevSpend.data);
 
   const cashData = (cash.data ?? []).map((row) => ({
     period: periodLabel(row.period, "month"),
@@ -627,22 +624,40 @@ export function DashboardPage() {
           id="by-category"
           title={t("dash.spendingByCategory")}
           description={t("dash.byCategoryHint")}
-          loading={spend.isLoading}
+          loading={spend.isLoading || (prevSpend.isLoading && !spend.isError)}
           error={spend.isError && !spend.data}
-          onRetry={() => void spend.refetch()}
-          retrying={spend.isFetching}
+          onRetry={() => {
+            void spend.refetch();
+            if (!showPrevCategory) void prevSpend.refetch();
+          }}
+          retrying={spend.isFetching || prevSpend.isFetching}
           empty={categoryRows.length ? null : { title: t("dash.noSpending"), body: t("dash.noSpendingBody") }}
           height={Math.max(200, categoryRows.length * 40)}
+          notice={
+            showPrevCategory ? null : (
+              <p role="status" className="mb-2 flex items-center gap-2 text-sm text-muted">
+                {t("dash.prevCategoriesFailed")}
+                <Button variant="ghost" className="h-8 px-2 text-sm sm:h-8" disabled={prevSpend.isFetching} onClick={() => void prevSpend.refetch()}>
+                  {t("common.retry")}
+                </Button>
+              </p>
+            )
+          }
           table={{
             columns: [
               { label: t("txn.colCategory") },
               { label: t("dash.colThisPeriodVnd"), numeric: true },
-              { label: t("dash.colPreviousVnd"), numeric: true },
+              ...(showPrevCategory ? [{ label: t("dash.colPreviousVnd"), numeric: true }] : []),
               { label: t("dash.colShare"), numeric: true },
             ],
             rows: categoryRows.map((r) => ({
               key: r.key,
-              cells: [r.category, formatAmount(r.current), formatAmount(r.previous), formatPercent(r.percent / 100)],
+              cells: [
+                r.category,
+                formatAmount(r.current),
+                ...(showPrevCategory ? [formatAmount(r.previous)] : []),
+                formatPercent(r.percent / 100),
+              ],
             })),
           }}
         >
@@ -677,7 +692,9 @@ export function DashboardPage() {
                   style={{ fontSize: 12, fill: CHART.axis }}
                 />
               </Bar>
-              <Bar dataKey="previous" isAnimationActive={animate} name={vsLabel} fill={CHART.muted} maxBarSize={8} radius={[0, 2, 2, 0]} />
+              {showPrevCategory && (
+                <Bar dataKey="previous" isAnimationActive={animate} name={vsLabel} fill={CHART.muted} maxBarSize={8} radius={[0, 2, 2, 0]} />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

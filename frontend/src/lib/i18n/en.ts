@@ -525,6 +525,7 @@ export const en = {
   "dash.tileError": "Couldn't load",
   "dash.widgetError": "Couldn't load {widget}.",
   "dash.vsPeriod": "vs {period}",
+  "dash.prevCategoriesFailed": "The comparison period could not be loaded.",
   "dash.weekShort": "Week {week}",
   "dash.comparedWith": "Compared with {period}",
   "dash.updatedAt": "Updated {time}",

@@ -527,6 +527,7 @@ export const vi: Dict = {
   "dash.tileError": "Không tải được",
   "dash.widgetError": "Không tải được {widget}.",
   "dash.vsPeriod": "so với {period}",
+  "dash.prevCategoriesFailed": "Không tải được kỳ so sánh.",
   "dash.weekShort": "Tuần {week}",
   "dash.comparedWith": "So với {period}",
   "dash.updatedAt": "Cập nhật {time}",
