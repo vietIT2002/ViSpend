@@ -244,7 +244,7 @@ export function TransactionsPage() {
                         </td>
                         <td className="px-5 py-3.5 font-medium text-ink">{catName(txn.category_id)}</td>
                         <td className="px-5 py-3.5">
-                          <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
+                          <Badge tone={txn.type === "income" ? "success" : "danger"}>{t(`type.${txn.type}`)}</Badge>
                         </td>
                         <td className="px-5 py-3.5 text-charcoal">{t(`method.${txn.method}`)}</td>
                         <td className={`nums px-5 py-3.5 text-right font-medium ${amountClass(txn.type)}`}>
@@ -341,7 +341,7 @@ export function TransactionsPage() {
             <DetailRow label={t("txn.detailCategory")} value={catName(viewing.category_id)} />
             <DetailRow
               label={t("txn.detailType")}
-              value={<Badge tone={viewing.type === "income" ? "green" : "red"}>{t(`type.${viewing.type}`)}</Badge>}
+              value={<Badge tone={viewing.type === "income" ? "success" : "danger"}>{t(`type.${viewing.type}`)}</Badge>}
             />
             <DetailRow label={t("txn.detailMethod")} value={t(`method.${viewing.method}`)} />
             <DetailRow
@@ -441,7 +441,7 @@ function TransactionMobileCard({
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
+          <Badge tone={txn.type === "income" ? "success" : "danger"}>{t(`type.${txn.type}`)}</Badge>
           <span className="text-xs text-muted">{t(`method.${txn.method}`)}</span>
         </div>
         {!locked && (

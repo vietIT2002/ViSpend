@@ -26,11 +26,11 @@ import {
   useUpsertBudgetAllocation,
 } from "./hooks";
 
-const ALERT_TONE: Record<BudgetAlert, "green" | "yellow" | "red"> = {
-  safe: "green",
-  watch: "yellow",
-  tight: "red",
-  over: "red",
+const ALERT_TONE: Record<BudgetAlert, "success" | "warning" | "danger"> = {
+  safe: "success",
+  watch: "warning",
+  tight: "warning",
+  over: "danger",
 };
 const ALERT_LABEL: Record<BudgetAlert, `budgets.alert.${BudgetAlert}`> = {
   safe: "budgets.alert.safe",

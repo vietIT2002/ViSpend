@@ -5,13 +5,26 @@ import { cn } from "../../lib/utils";
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-md bg-black/[0.055]",
-        "before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.3s_infinite]",
-        "before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent",
-        className,
-      )}
+      aria-hidden="true"
+      className={cn("rounded bg-black/[0.06] animate-pulse motion-reduce:animate-none", className)}
       {...props}
     />
+  );
+}
+
+/** Table rows at their final 40px height, so the page does not jump when data arrives. */
+export function TableSkeletonRows({ columns, rows = 8 }: { columns: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, r) => (
+        <tr key={r} className="h-10" aria-hidden="true">
+          {Array.from({ length: columns }, (_, c) => (
+            <td key={c} className="px-3">
+              <Skeleton className="h-4 w-full max-w-40" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }

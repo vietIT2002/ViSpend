@@ -1,3 +1,4 @@
+import { useT } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 
 const PALETTE = [
@@ -17,42 +18,54 @@ const PALETTE = [
   "#5b6770",
 ];
 
+/** Colour choice as a radio group; the selected swatch shows a ring and a check. */
 export function ColorSwatchPicker({
   value,
   onChange,
+  labelledBy,
 }: {
   value: string | null;
   onChange: (color: string) => void;
+  labelledBy?: string;
 }) {
+  const t = useT();
   const isCustom = value != null && !PALETTE.includes(value);
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div role="radiogroup" aria-labelledby={labelledBy} className="flex flex-wrap items-center gap-1.5">
       {PALETTE.map((c) => (
         <button
           key={c}
           type="button"
-          aria-label={`Color ${c}`}
+          role="radio"
+          aria-checked={value === c}
+          aria-label={t("cat.colorOption", { color: c })}
+          title={c}
           onClick={() => onChange(c)}
           style={{ backgroundColor: c }}
           className={cn(
-            "size-7 rounded-md transition-transform hover:scale-105",
-            value === c ? "ring-2 ring-ink ring-offset-1" : "ring-1 ring-black/10",
+            "grid size-8 place-items-center rounded text-white",
+            value === c ? "ring-2 ring-ink ring-offset-2" : "ring-1 ring-black/10",
           )}
-        />
+        >
+          {value === c && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+              <path d="M5 12l5 5L20 7" />
+            </svg>
+          )}
+        </button>
       ))}
-      {/* Custom color: a hidden native picker behind a rainbow swatch. */}
+      {/* Custom colour: a native picker behind a rainbow swatch. */}
       <label
-        title="Custom color"
-        aria-label="Custom color"
+        title={t("cat.customColor")}
         style={{
-          background:
-            "conic-gradient(from 90deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444)",
+          background: "conic-gradient(from 90deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444)",
         }}
         className={cn(
-          "relative grid size-7 cursor-pointer place-items-center rounded-md transition-transform hover:scale-105",
-          isCustom ? "ring-2 ring-ink ring-offset-1" : "ring-1 ring-black/10",
+          "relative grid size-8 cursor-pointer place-items-center rounded focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
+          isCustom ? "ring-2 ring-ink ring-offset-2" : "ring-1 ring-black/10",
         )}
       >
+        <span className="sr-only">{t("cat.customColor")}</span>
         <input
           type="color"
           value={value ?? DEFAULT_CATEGORY_COLOR}

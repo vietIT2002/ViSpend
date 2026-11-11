@@ -1,39 +1,37 @@
-import { cn } from "../../lib/utils";
-import { useLanguage } from "../../lib/i18n";
+import { useLanguage, useT } from "../../lib/i18n";
 import type { Lang } from "../../lib/i18n";
+import { cn } from "../../lib/utils";
 
-const OPTIONS: { lang: Lang; label: string }[] = [
-  { lang: "en", label: "EN" },
-  { lang: "vi", label: "VI" },
+const OPTIONS: { lang: Lang; short: string; name: "language.en" | "language.vi" }[] = [
+  { lang: "en", short: "EN", name: "language.en" },
+  { lang: "vi", short: "VI", name: "language.vi" },
 ];
 
-// Compact segmented EN/VI switch. `tone="dark"` suits light backgrounds (default);
-// kept minimal so it fits both the top bar and the settings card.
+/** Compact EN/VI switch; applies at once and is saved to the profile. */
 export function LanguageToggle({ className }: { className?: string }) {
   const { lang, setLang } = useLanguage();
+  const t = useT();
   return (
     <div
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-md border border-line bg-surface p-0.5",
-        className,
-      )}
+      className={cn("inline-flex items-center gap-0.5 rounded border border-line-strong bg-surface p-0.5", className)}
       role="group"
-      aria-label="Language"
+      aria-label={t("language.label")}
     >
       {OPTIONS.map((o) => (
         <button
           key={o.lang}
           type="button"
+          lang={o.lang}
           onClick={() => setLang(o.lang)}
           aria-pressed={lang === o.lang}
+          aria-label={t(o.name)}
+          title={t(o.name)}
           className={cn(
-            "rounded px-2.5 py-1 text-xs font-semibold leading-5 transition-colors",
-            lang === o.lang
-              ? "bg-brand text-white"
-              : "text-muted hover:bg-black/[0.04] hover:text-ink",
+            "h-7 rounded-sm px-2.5 text-xs font-semibold transition-colors",
+            lang === o.lang ? "bg-brand-soft text-brand" : "text-charcoal hover:bg-black/[0.04]",
           )}
         >
-          {o.label}
+          {o.short}
         </button>
       ))}
     </div>

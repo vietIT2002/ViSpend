@@ -2,14 +2,15 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "../../lib/utils";
 
-type Tone = "red" | "green" | "blue" | "yellow" | "neutral";
+/** The five status tones of DESIGN.md. A badge always carries its text. */
+export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 const tones: Record<Tone, string> = {
-  red: "bg-pastel-red text-pastel-red-ink",
-  green: "bg-pastel-green text-pastel-green-ink",
-  blue: "bg-pastel-blue text-pastel-blue-ink",
-  yellow: "bg-pastel-yellow text-pastel-yellow-ink",
   neutral: "bg-black/[0.05] text-charcoal",
+  info: "bg-pastel-blue text-pastel-blue-ink",
+  success: "bg-pastel-green text-pastel-green-ink",
+  warning: "bg-pastel-yellow text-pastel-yellow-ink",
+  danger: "bg-pastel-red text-pastel-red-ink",
 };
 
 export function Badge({
@@ -20,7 +21,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em]",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium leading-4 whitespace-nowrap",
         tones[tone],
         className,
       )}

@@ -540,7 +540,7 @@ export function DashboardPage() {
         <Card className="rise p-4 sm:p-5" style={rise(2)}>
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-semibold text-ink">{t("dash.spendingByCategory")}</h2>
-            <Badge tone={categoryChart.length ? "green" : "neutral"}>{t("dash.amount")}</Badge>
+            <Badge tone={categoryChart.length ? "success" : "neutral"}>{t("dash.amount")}</Badge>
           </div>
           {spend.isLoading ? (
             <Skeleton className="mt-4 h-[320px]" />
@@ -748,7 +748,7 @@ export function DashboardPage() {
             <ul className="divide-y divide-line">
               {recentItems.map((txn) => (
                 <li key={txn.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                  <Badge tone={txn.type === "income" ? "green" : "red"}>{t(`type.${txn.type}`)}</Badge>
+                  <Badge tone={txn.type === "income" ? "success" : "danger"}>{t(`type.${txn.type}`)}</Badge>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{catName(txn.category_id)}</p>
                     <p className="nums truncate text-xs text-muted">

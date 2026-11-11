@@ -147,10 +147,10 @@ function AccountSummary() {
           <p className="nums truncate text-sm text-muted">{user?.email ?? t("settings.noEmail")}</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Badge tone={user?.is_verified ? "green" : "neutral"}>
+          <Badge tone={user?.is_verified ? "success" : "neutral"}>
             {user?.is_verified ? t("settings.verified") : t("settings.unverified")}
           </Badge>
-          <Badge tone={user?.email ? "blue" : "neutral"}>
+          <Badge tone={user?.email ? "info" : "neutral"}>
             {user?.email ? t("settings.emailLinked") : t("settings.noEmailBadge")}
           </Badge>
         </div>
