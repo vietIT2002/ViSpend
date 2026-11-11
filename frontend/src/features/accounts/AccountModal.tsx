@@ -157,8 +157,8 @@ export function AccountModal({
             />
           </div>
           <div>
-            <label className={LABEL}>{t("accounts.color")}</label>
-            <ColorSwatchPicker value={color} onChange={setColor} />
+            <label id="account-color-label" className={LABEL}>{t("accounts.color")}</label>
+            <ColorSwatchPicker value={color} onChange={setColor} labelledBy="account-color-label" />
           </div>
         </div>
 

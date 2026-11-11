@@ -1,3 +1,5 @@
+import type { KeyboardEvent } from "react";
+
 import { useT } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 
@@ -26,18 +28,33 @@ export function ColorSwatchPicker({
 }: {
   value: string | null;
   onChange: (color: string) => void;
-  labelledBy?: string;
+  labelledBy: string;
 }) {
   const t = useT();
   const isCustom = value != null && !PALETTE.includes(value);
+  // One tab stop: the checked swatch, or the first when the value is custom/none.
+  const tabStop = value != null && PALETTE.includes(value) ? value : PALETTE[0];
+
+  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    const next = PALETTE[(index + delta + PALETTE.length) % PALETTE.length];
+    onChange(next);
+    const group = e.currentTarget.parentElement;
+    requestAnimationFrame(() => group?.querySelector<HTMLButtonElement>(`[data-value="${next}"]`)?.focus());
+  }
   return (
     <div role="radiogroup" aria-labelledby={labelledBy} className="flex flex-wrap items-center gap-1.5">
-      {PALETTE.map((c) => (
+      {PALETTE.map((c, i) => (
         <button
           key={c}
           type="button"
           role="radio"
           aria-checked={value === c}
+          data-value={c}
+          tabIndex={c === tabStop ? 0 : -1}
+          onKeyDown={(e) => onKeyDown(e, i)}
           aria-label={t("cat.colorOption", { color: c })}
           title={c}
           onClick={() => onChange(c)}

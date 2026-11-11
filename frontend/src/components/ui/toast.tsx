@@ -23,6 +23,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToast({ id: counter.current, message });
   }, []);
 
+  // The removed node never fires mouseleave/blur, so reset on every toast change.
+  const toastId = toast?.id ?? null;
+  useEffect(() => {
+    setPaused(false);
+  }, [toastId]);
+
   useEffect(() => {
     if (!toast || paused) return;
     const timer = window.setTimeout(() => setToast(null), DURATION_MS);
@@ -50,7 +56,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <p className="min-w-0 flex-1">{toast.message}</p>
             <button
               type="button"
-              onClick={() => setToast(null)}
+              onClick={() => {
+                setPaused(false);
+                setToast(null);
+              }}
               aria-label={t("common.dismiss")}
               className="-my-1 -mr-1 grid size-7 shrink-0 place-items-center rounded text-muted hover:bg-black/[0.05] hover:text-ink"
             >

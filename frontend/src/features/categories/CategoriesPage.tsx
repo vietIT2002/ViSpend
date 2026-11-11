@@ -103,8 +103,8 @@ export function CategoriesPage() {
             </div>
           </div>
           <div>
-            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.color")}</span>
-            <ColorSwatchPicker value={color} onChange={setColor} />
+            <span id="category-color-label" className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.color")}</span>
+            <ColorSwatchPicker value={color} onChange={setColor} labelledBy="category-color-label" />
           </div>
         </div>
 
