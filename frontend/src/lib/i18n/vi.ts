@@ -129,6 +129,7 @@ export const vi: Dict = {
   "auth.createAnAccount": "Tạo tài khoản",
   "auth.alreadyHaveAccount": "Đã có tài khoản?",
   "auth.googleError": "Không thể đăng nhập bằng Google.",
+  "auth.serverUnavailable": "Máy chủ chưa phản hồi. Vui lòng đợi một phút rồi thử lại.",
   "auth.google.continue": "Tiếp tục với Google",
   "auth.google.loading": "Đang tải Google...",
   "auth.google.notConfigured": "Đăng nhập Google chưa được cấu hình.",

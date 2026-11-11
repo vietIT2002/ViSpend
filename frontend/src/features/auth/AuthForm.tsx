@@ -19,7 +19,8 @@ import { Label } from "../../components/ui/label";
 import { LanguageToggle } from "../../components/ui/language-toggle";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
-import { useErrorText, useT } from "../../lib/i18n";
+import { authErrorKey } from "../../lib/auth-errors";
+import { useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
@@ -255,7 +256,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
   const { login, loginWithGoogle, register } = useAuth();
   const t = useT();
-  const errText = useErrorText();
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -280,9 +280,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
       navigate("/");
     } catch (err) {
-      setError(errText(err));
+      setError(t(authErrorKey(err, "errors.unknown")));
     } finally {
       window.clearTimeout(slowTimer);
+      setLoginSlow(false);
     }
   }
 
@@ -294,12 +295,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         await loginWithGoogle(credential);
         navigate("/");
       } catch (err) {
-        setError(errText(err, "auth.googleError"));
+        setError(t(authErrorKey(err, "auth.googleError")));
       } finally {
         setGoogleBusy(false);
       }
     },
-    [errText, loginWithGoogle, navigate],
+    [t, loginWithGoogle, navigate],
   );
 
   const handleGoogleError = useCallback((message: string) => {

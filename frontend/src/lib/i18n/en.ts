@@ -129,6 +129,7 @@ export const en = {
   "auth.createAnAccount": "Create an account",
   "auth.alreadyHaveAccount": "Already have an account?",
   "auth.googleError": "Could not sign in with Google.",
+  "auth.serverUnavailable": "The server isn't responding. Wait a minute and try again.",
   "auth.google.continue": "Continue with Google",
   "auth.google.loading": "Loading Google...",
   "auth.google.notConfigured": "Google sign-in is not configured.",
