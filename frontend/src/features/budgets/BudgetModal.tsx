@@ -46,6 +46,7 @@ export function BudgetModal({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<{ category?: string; amount?: string; date?: string }>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [focusTarget, setFocusTarget] = useState<keyof typeof ids | null>(null);
 
   // Reset the form whenever it opens or the viewed month changes.
   useEffect(() => {
@@ -58,6 +59,13 @@ export function BudgetModal({
     setErrors({});
     setServerError(null);
   }, [open, month]);
+
+  // Move focus to the first invalid field once it is in the DOM (the date field lives in a collapsible section).
+  useEffect(() => {
+    if (!focusTarget) return;
+    document.getElementById(ids[focusTarget])?.focus();
+    setFocusTarget(null);
+  }, [focusTarget, showAdvanced, ids]);
 
   const effectiveFrom = effectiveFromForScope(month, scope, customDate);
 
@@ -72,7 +80,8 @@ export function BudgetModal({
     setServerError(null);
     const first = (["category", "amount", "date"] as const).find((k) => next[k]);
     if (first) {
-      document.getElementById(ids[first])?.focus();
+      if (first === "date") setShowAdvanced(true);
+      setFocusTarget(first);
       return;
     }
     const category = options.find((o) => o.id === categoryId)?.name ?? "";
