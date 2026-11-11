@@ -458,6 +458,12 @@ export const en = {
   "settings.err.currentRequired": "Enter your current password",
   "settings.err.weakPassword": "Does not meet the requirements below",
   "settings.err.passwordMismatch": "Passwords do not match",
+  "settings.email": "Email",
+  "settings.emailFixedHint": "Your sign-in email can't be changed.",
+  "settings.googleAccount": "Google account",
+  "settings.req.met": "met",
+  "settings.req.notMet": "not met yet",
+  "settings.err.confirmRequired": "Enter the new password again",
 
   // Backend error codes
   "errors.unknown": "Something went wrong. Please try again.",

@@ -460,6 +460,12 @@ export const vi: Dict = {
   "settings.err.currentRequired": "Nhập mật khẩu hiện tại",
   "settings.err.weakPassword": "Chưa đáp ứng yêu cầu bên dưới",
   "settings.err.passwordMismatch": "Mật khẩu không khớp",
+  "settings.email": "Email",
+  "settings.emailFixedHint": "Email đăng nhập không thể thay đổi.",
+  "settings.googleAccount": "Tài khoản Google",
+  "settings.req.met": "đã đạt",
+  "settings.req.notMet": "chưa đạt",
+  "settings.err.confirmRequired": "Nhập lại mật khẩu mới",
 
   // Backend error codes
   "errors.unknown": "Đã có lỗi xảy ra. Vui lòng thử lại.",
