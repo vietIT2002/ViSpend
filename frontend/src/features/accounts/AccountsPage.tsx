@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { PageHeader } from "../../components/ui/page-header";
-import { TableSkeletonRows } from "../../components/ui/skeleton";
+import { Skeleton } from "../../components/ui/skeleton";
 import { EmptyState, ErrorState, InlineAlert } from "../../components/ui/states";
 import { useToast } from "../../components/ui/toast";
 import { formatAmount, formatMoney, formatNumber } from "../../lib/format";
@@ -19,6 +19,22 @@ import { AccountLogo } from "./AccountLogo";
 import { AccountModal } from "./AccountModal";
 import { TransferModal } from "./TransferModal";
 import { useAccounts, useDeleteAccount, useUpdateAccount } from "./hooks";
+
+/** Same visible columns as the table: the Type cell is hidden below sm. */
+function SkeletonRows() {
+  return (
+    <>
+      {[0, 1, 2, 3].map((r) => (
+        <tr key={r} className="h-10" aria-hidden="true">
+          <td className="px-3"><Skeleton className="h-4 w-full max-w-40" /></td>
+          <td className="hidden px-3 sm:table-cell"><Skeleton className="h-4 w-full max-w-40" /></td>
+          <td className="px-3"><Skeleton className="ml-auto h-4 w-full max-w-24" /></td>
+          <td className="px-3"><Skeleton className="ml-auto h-4 w-full max-w-16" /></td>
+        </tr>
+      ))}
+    </>
+  );
+}
 
 function AccountTable({
   titleId,
@@ -51,7 +67,7 @@ function AccountTable({
         </thead>
         <tbody className="divide-y divide-line">
           {loading ? (
-            <TableSkeletonRows columns={4} rows={4} />
+            <SkeletonRows />
           ) : (
             rows.map((acc) => {
               const balance = Number(acc.balance);
@@ -61,12 +77,10 @@ function AccountTable({
                   <td className="max-w-0 px-3 py-1 sm:max-w-none">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <AccountLogo acc={acc} size={28} />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-ink" title={acc.name}>
-                          {acc.name}
-                        </p>
-                        <p className="truncate text-xs leading-4 text-muted sm:hidden">{typeLabel}</p>
-                      </div>
+                      <p className="min-w-0 truncate font-medium text-ink" title={acc.name}>
+                        {acc.name}
+                        <span className="sr-only sm:hidden">, {typeLabel}</span>
+                      </p>
                     </div>
                   </td>
                   <td className="hidden px-3 text-charcoal sm:table-cell">{typeLabel}</td>
