@@ -13,6 +13,7 @@ import { DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker"
 import { useCategories, useCreateCategory } from "../categories/hooks";
 import { useAccounts } from "../accounts/hooks";
 import { accountEmoji } from "../accounts/util";
+import { todayIso } from "../../lib/dates";
 import { useCategoryLabel, useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import type { ParseSuggestion, Transaction, TxnType } from "../../types";
@@ -28,7 +29,6 @@ const schema = z.object({
   note: z.string().optional(),
 });
 type Form = z.infer<typeof schema>;
-const today = () => new Date().toISOString().slice(0, 10);
 
 export function TransactionModal({
   open,
@@ -62,7 +62,7 @@ export function TransactionModal({
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { type: defaultType, method: "cash", occurred_on: today() },
+    defaultValues: { type: defaultType, method: "cash", occurred_on: todayIso() },
   });
 
   const type = watch("type");
@@ -96,7 +96,7 @@ export function TransactionModal({
         note: prefill.note ?? "",
       });
     } else {
-      reset({ type: defaultType, method: "cash", occurred_on: today(), account_id: "", note: "" });
+      reset({ type: defaultType, method: "cash", occurred_on: todayIso(), account_id: "", note: "" });
     }
   }, [open, editing, defaultType, prefill, reset]);
 

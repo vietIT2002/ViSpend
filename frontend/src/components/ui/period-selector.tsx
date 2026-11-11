@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 
+import { rangeFor, type PeriodKey } from "../../lib/dates";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import { Input } from "./input";
 import { Select } from "./select";
 
-export type PeriodKey = "this_month" | "last_month" | "3m" | "6m" | "custom";
+export type { PeriodKey };
 
 const PRESETS: { key: PeriodKey; label: TKey }[] = [
   { key: "this_month", label: "period.this_month" },
@@ -16,27 +17,7 @@ const PRESETS: { key: PeriodKey; label: TKey }[] = [
   { key: "custom", label: "period.custom" },
 ];
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-
-export function rangeFor(key: PeriodKey, customFrom: string, customTo: string) {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const start = (yy: number, mm: number) => iso(new Date(yy, mm, 1));
-  const end = (yy: number, mm: number) => iso(new Date(yy, mm + 1, 0));
-  switch (key) {
-    case "this_month":
-      return { from: start(y, m), to: end(y, m) };
-    case "last_month":
-      return { from: start(y, m - 1), to: end(y, m - 1) };
-    case "3m":
-      return { from: start(y, m - 2), to: end(y, m) };
-    case "6m":
-      return { from: start(y, m - 5), to: end(y, m) };
-    case "custom":
-      return { from: customFrom, to: customTo };
-  }
-}
+export { rangeFor };
 
 export function PeriodSelector({
   onChange,
