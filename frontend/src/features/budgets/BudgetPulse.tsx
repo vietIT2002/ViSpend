@@ -1,124 +1,163 @@
-import { WalletCards } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Badge } from "../../components/ui/badge";
-import { Card } from "../../components/ui/card";
-import { useCategoryLabel, useLocale, useT } from "../../lib/i18n";
-import { vnd } from "../../lib/utils";
-import type { BudgetAlert } from "../../types";
+import { Badge, type Tone } from "../../components/ui/badge";
+import { Card, CardHeader } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
+import { ErrorState } from "../../components/ui/states";
+import { currentMonth, singleMonth } from "../../lib/dates";
+import { formatMoney, formatMonth, formatNumber, formatTime } from "../../lib/format";
+import { useCategoryLabel, useT } from "../../lib/i18n";
 import { useCategories } from "../categories/hooks";
+import { ALERT_LABEL, ALERT_ORDER, ALERT_TONE } from "./alerts";
 import { useBudgetPlan } from "./hooks";
 
-const ALERT_TONE: Record<BudgetAlert, "success" | "warning" | "danger"> = {
-  safe: "success",
-  watch: "warning",
-  tight: "warning",
-  over: "danger",
-};
-const ALERT_LABEL: Record<BudgetAlert, `budgets.alert.${BudgetAlert}`> = {
-  safe: "budgets.alert.safe",
-  watch: "budgets.alert.watch",
-  tight: "budgets.alert.tight",
-  over: "budgets.alert.over",
-};
-
-// Returns "YYYY-MM" when [from, to] is exactly one full calendar month, else null.
-function fullCalendarMonth(from?: string, to?: string): string | null {
-  if (!from || !to) return null;
-  const [y, m, d] = from.split("-");
-  if (d !== "01") return null;
-  const last = new Date(Number(y), Number(m), 0).getDate();
-  if (to !== `${y}-${m}-${String(last).padStart(2, "0")}`) return null;
-  return `${y}-${m}`;
+interface AttentionItem {
+  key: string;
+  text: string;
+  badge: { tone: Tone; label: string };
+  to: string;
+  rank: number;
 }
 
-export function BudgetPulse({ from, to }: { from?: string; to?: string }) {
+const MAX_ITEMS = 5;
+
+/**
+ * Dashboard "Needs attention": each row is a count or amount in words, a status
+ * badge with text, and a link to the list that shows it. Zero rows is a result.
+ */
+export function NeedsAttention({
+  from,
+  to,
+  net,
+  netReady,
+}: {
+  from: string;
+  to: string;
+  net: number;
+  netReady: boolean;
+}) {
   const t = useT();
-  const locale = useLocale();
   const categoryLabel = useCategoryLabel();
   const { data: cats = [] } = useCategories();
-  const month = fullCalendarMonth(from, to);
-  const { data: plan } = useBudgetPlan(month ?? "");
+  const month = singleMonth(from, to);
+  const plan = useBudgetPlan(month ?? "");
+  const budgetsHref = month && month !== currentMonth() ? `/budgets?month=${month}` : "/budgets";
 
   const labelFor = (categoryId: string, fallback: string) => {
     const cat = cats.find((c) => c.id === categoryId);
     return cat ? categoryLabel(cat) : fallback;
   };
 
-  const monthName = (m: string) => {
-    const [y, mm] = m.split("-").map(Number);
-    return new Date(y, mm - 1, 1).toLocaleString(locale, { month: "long" });
-  };
-
-  if (!month) {
-    return (
-      <Card className="rise flex items-center gap-3 p-4 sm:p-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand-dark">
-          <WalletCards size={18} />
-        </span>
-        <p className="text-sm text-muted">{t("pulse.fullMonthOnly")}</p>
-      </Card>
-    );
+  const items: AttentionItem[] = [];
+  if (netReady && net < 0) {
+    items.push({
+      key: "net",
+      text: t("attention.overspent", { amount: formatMoney(Math.abs(net)) }),
+      badge: { tone: "danger", label: t("attention.badgeOverspent") },
+      to: `/transactions?type=expense&from=${from}&to=${to}`,
+      rank: -1,
+    });
   }
-
-  const hasBudget = plan && Number(plan.monthly_budget) > 0;
-  const risks = (plan?.items ?? []).filter((i) => i.alert !== "safe").slice(0, 2);
+  for (const item of plan.data?.items ?? []) {
+    if (item.alert === "safe") continue;
+    const category = labelFor(item.category_id, item.category);
+    const remaining = Number(item.remaining);
+    items.push({
+      key: item.id,
+      text:
+        remaining < 0
+          ? t("attention.overLimit", { category, over: formatMoney(Math.abs(remaining)), limit: formatMoney(item.amount) })
+          : t("attention.nearLimit", {
+              category,
+              percent: formatNumber(item.usage_percent),
+              left: formatMoney(remaining),
+            }),
+      badge: { tone: ALERT_TONE[item.alert], label: t(ALERT_LABEL[item.alert]) },
+      to: budgetsHref,
+      rank: ALERT_ORDER[item.alert],
+    });
+  }
+  items.sort((a, b) => a.rank - b.rank);
+  const shown = items.slice(0, MAX_ITEMS);
+  const hasBudget = Number(plan.data?.monthly_budget ?? 0) > 0;
+  const loading = !netReady || (Boolean(month) && plan.isLoading);
 
   return (
-    <Card className="rise p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand-dark">
-            <WalletCards size={18} />
-          </span>
-          <h2 className="font-medium text-ink">{t("pulse.monthlyBudget")}</h2>
-        </div>
-        <Link to="/budgets" className="text-sm font-medium text-brand-dark underline-offset-4 hover:underline">
-          {t("pulse.openBudgets")}
-        </Link>
-      </div>
-
-      {hasBudget ? (
-        <>
-          <p className="mt-4 text-lg leading-relaxed text-ink">
-            {t("pulse.sentence", {
-              month: monthName(month),
-              budget: vnd(plan!.monthly_budget),
-              remaining: vnd(plan!.total_remaining),
-            })}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            {t(plan!.items.length === 1 ? "pulse.acrossOne" : "pulse.acrossOther", {
-              count: plan!.items.length,
-              spent: vnd(plan!.total_spent),
-            })}
-          </p>
-          {risks.length > 0 && (
-            <ul className="mt-4 divide-y divide-line border-t border-line">
-              {risks.map((r) => {
-                const remaining = Number(r.remaining);
-                return (
-                  <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <p className="nums min-w-0 truncate text-sm text-charcoal">
-                      <span className="font-medium text-ink">{labelFor(r.category_id, r.category)}</span>{" "}
-                      {remaining < 0
-                        ? t("pulse.overLimit", { over: vnd(Math.abs(remaining)), limit: vnd(r.amount) })
-                        : t("pulse.underLimit", { remaining: vnd(r.remaining), limit: vnd(r.amount) })}
-                    </p>
-                    <Badge tone={ALERT_TONE[r.alert]}>{t(ALERT_LABEL[r.alert])}</Badge>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      ) : (
-        <p className="mt-4 text-sm text-muted">
-          {t("pulse.noBudget", { month: monthName(month) })}{" "}
-          <Link to="/budgets" className="font-medium text-brand-dark hover:underline">
-            {t("pulse.setBudget")}
+    <Card className="flex flex-col">
+      <CardHeader
+        title={t("attention.title")}
+        titleId="attention-title"
+        action={
+          <Link to={budgetsHref} className="text-sm font-medium text-brand underline-offset-4 hover:underline">
+            {t("pulse.openBudgets")}
           </Link>
-        </p>
+        }
+      />
+      <p role="status" className="sr-only">
+        {loading ? "" : t("attention.count", { count: formatNumber(items.length) })}
+      </p>
+
+      {plan.isError && !plan.data ? (
+        <ErrorState message={t("attention.loadError")} onRetry={() => void plan.refetch()} retrying={plan.isFetching} />
+      ) : loading ? (
+        <div className="space-y-3 p-4" aria-busy="true">
+          <Skeleton className="h-5" />
+          <Skeleton className="h-5" />
+          <Skeleton className="h-5 w-2/3" />
+        </div>
+      ) : (
+        <div className="flex-1">
+          {shown.length > 0 ? (
+            <ul className="divide-y divide-line" aria-labelledby="attention-title">
+              {shown.map((item) => (
+                <li key={item.key}>
+                  <Link
+                    to={item.to}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-black/[0.02]"
+                  >
+                    <Badge tone={item.badge.tone}>{item.badge.label}</Badge>
+                    <span className="nums min-w-0 flex-1 text-ink">{item.text}</span>
+                    <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+              {items.length > MAX_ITEMS && (
+                <li className="px-4 py-2.5 text-sm">
+                  <Link to={budgetsHref} className="font-medium text-brand underline-offset-4 hover:underline">
+                    {t("attention.more", { count: formatNumber(items.length - MAX_ITEMS) })}
+                  </Link>
+                </li>
+              )}
+            </ul>
+          ) : (
+            <div className="px-4 py-6 text-center">
+              <p className="font-medium text-pastel-green-ink">{t("attention.none")}</p>
+              <p className="mt-1 text-sm text-muted">{t("attention.checkedAt", { time: formatTime(Date.now()) })}</p>
+            </div>
+          )}
+
+          <div className="border-t border-line px-4 py-3 text-sm text-muted">
+            {!month ? (
+              t("pulse.fullMonthOnly")
+            ) : hasBudget && plan.data ? (
+              <span className="nums">
+                {t("attention.budgetLine", {
+                  month: formatMonth(month),
+                  budget: formatMoney(plan.data.monthly_budget),
+                  left: formatMoney(plan.data.total_remaining),
+                })}
+              </span>
+            ) : (
+              <>
+                {t("pulse.noBudget", { month: formatMonth(month) })}{" "}
+                <Link to={budgetsHref} className="font-medium text-brand underline-offset-4 hover:underline">
+                  {t("pulse.setBudget")}
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </Card>
   );

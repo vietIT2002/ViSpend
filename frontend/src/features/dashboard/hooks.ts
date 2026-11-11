@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api, buildQuery } from "../../lib/api";
-import { currentMonth, firstOfMonth, lastOfMonth, previousPeriod as previousRange, shiftMonth } from "../../lib/dates";
+import { currentMonth, firstOfMonth, lastOfMonth, shiftMonth } from "../../lib/dates";
 import type { CategorySpend, DashboardSummary, TrendPoint } from "../../types";
 
 type TrendGranularity = "day" | "week" | "month";
@@ -30,13 +30,8 @@ export function useTrend(granularity: TrendGranularity, from?: string, to?: stri
   });
 }
 
+/** Monthly income and expense for the last `months` calendar months, this one included. */
 export function useCashflow(months = 6) {
   const month = currentMonth();
   return useTrend("month", firstOfMonth(shiftMonth(month, -(months - 1))), lastOfMonth(month));
-}
-
-/** Period to compare with [from, to]; empty until both ends are known. */
-export function previousPeriod(from?: string, to?: string) {
-  if (!from || !to) return { from: undefined, to: undefined };
-  return previousRange(from, to);
 }
