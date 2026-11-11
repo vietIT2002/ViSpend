@@ -129,12 +129,12 @@ export function NeedsAttention({
                 </li>
               )}
             </ul>
-          ) : (
+          ) : month && hasBudget && plan.data ? (
             <div className="px-4 py-6 text-center">
               <p className="font-medium text-pastel-green-ink">{t("attention.none")}</p>
               <p className="mt-1 text-sm text-muted">{t("attention.checkedAt", { time: formatTime(Date.now()) })}</p>
             </div>
-          )}
+          ) : null}
 
           <div className="border-t border-line px-4 py-3 text-sm text-muted">
             {!month ? (
