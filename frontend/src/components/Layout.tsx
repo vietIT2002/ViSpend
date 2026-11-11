@@ -20,7 +20,7 @@ const links: { to: string; label: TKey; icon: typeof IconDashboard }[] = [
   { to: "/settings", label: "nav.settings", icon: Settings },
 ];
 
-// Five short first-level items fit a top bar. The active item gets a subtle
+// Six short first-level items fit a top bar from 1024px; below that the menu collapses. The active item gets a subtle
 // fill and bold text (aria-current is set by NavLink); the accent stays on actions.
 const itemClass = (isActive: boolean) =>
   cn(
@@ -59,7 +59,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="text-base font-semibold text-ink">ViSpend</span>
           </NavLink>
 
-          <nav aria-label={t("nav.main")} className="hidden min-w-0 items-center gap-1 md:flex">
+          <nav aria-label={t("nav.main")} className="hidden min-w-0 items-center gap-1 lg:flex">
             {links.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => itemClass(isActive)}>
                 <Icon size={16} aria-hidden="true" />
@@ -68,10 +68,10 @@ export function Layout({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="ml-auto hidden items-center gap-2 md:flex">
+          <div className="ml-auto hidden items-center gap-2 lg:flex">
             <LanguageToggle />
             {account && (
-              <span className="nums max-w-40 truncate text-sm text-muted" title={account}>
+              <span className="nums hidden max-w-40 truncate xl:inline text-sm text-muted" title={account}>
                 {account}
               </span>
             )}
@@ -92,14 +92,14 @@ export function Layout({ children }: { children: ReactNode }) {
             aria-label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            className="ml-auto size-10 px-0 md:hidden"
+            className="ml-auto size-10 px-0 lg:hidden"
           >
             {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </Button>
         </div>
 
         {menuOpen && (
-          <nav id="mobile-menu" aria-label={t("nav.main")} className="border-t border-line bg-surface px-3 py-2 md:hidden">
+          <nav id="mobile-menu" aria-label={t("nav.main")} className="border-t border-line bg-surface px-3 py-2 lg:hidden">
             {links.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}

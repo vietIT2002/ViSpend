@@ -1,7 +1,7 @@
 // Phone-width check through the Chrome DevTools Protocol: emulates a 390px
 // device, reports horizontal overflow per page and saves a screenshot.
 // Usage: node mobile-check.mjs <outDir> <path> [<path>...]
-// Env: CHROME_PATH (default C:/Program Files/Google/Chrome/Application/chrome.exe)
+// Env: VIEWPORT_WIDTH (default 390; mobile emulation only below 768), CHROME_PATH (default C:/Program Files/Google/Chrome/Application/chrome.exe)
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,6 +10,7 @@ import { join } from "node:path";
 const [outDir, ...paths] = process.argv.slice(2);
 const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = 9333;
+const WIDTH = Number(process.env.VIEWPORT_WIDTH) || 390;
 const LOAD_TIMEOUT_MS = 30_000;
 const SETTLE_MS = 1500;
 if (!outDir || paths.length === 0) {
@@ -77,7 +78,7 @@ try {
   });
 
   await send("Page.enable");
-  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: 844, deviceScaleFactor: 1, mobile: WIDTH < 768 });
   for (const path of paths) {
     try {
       const done = loaded();
@@ -105,7 +106,7 @@ try {
         throw new Error(`could not measure the page: ${r.error?.message ?? r.result?.exceptionDetails?.text ?? "no value returned"}`);
       }
       const v = r.result.result.value;
-      console.log(`${path}  viewport ${v.vw}px  scrollWidth ${v.scrollWidth}px  ${v.scrollWidth > v.vw ? "OVERFLOW" : "ok"}`);
+      console.log(`${path}  requested ${WIDTH}px  viewport ${v.vw}px  scrollWidth ${v.scrollWidth}px  ${v.scrollWidth > v.vw ? "OVERFLOW" : "ok"}`);
       v.wide.forEach((w) => console.log("   wider than viewport:", w));
       const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
       if (shot.result?.data) writeFileSync(join(outDir, `m${path.replace(/[^A-Za-z0-9]+/g, "-") || "-home"}.png`), Buffer.from(shot.result.data, "base64"));
