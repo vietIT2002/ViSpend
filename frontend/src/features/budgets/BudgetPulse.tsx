@@ -30,12 +30,11 @@ export function NeedsAttention({
   from,
   to,
   net,
-  netReady,
 }: {
   from: string;
   to: string;
-  net: number;
-  netReady: boolean;
+  /** Net balance of the period; null while unknown (loading or failed), which omits the overspent row. */
+  net: number | null;
 }) {
   const t = useT();
   const categoryLabel = useCategoryLabel();
@@ -50,7 +49,7 @@ export function NeedsAttention({
   };
 
   const items: AttentionItem[] = [];
-  if (netReady && net < 0) {
+  if (net !== null && net < 0) {
     items.push({
       key: "net",
       text: t("attention.overspent", { amount: formatMoney(Math.abs(net)) }),
@@ -81,7 +80,7 @@ export function NeedsAttention({
   items.sort((a, b) => a.rank - b.rank);
   const shown = items.slice(0, MAX_ITEMS);
   const hasBudget = Number(plan.data?.monthly_budget ?? 0) > 0;
-  const loading = !netReady || (Boolean(month) && plan.isLoading);
+  const loading = Boolean(month) && plan.isLoading;
 
   return (
     <Card className="flex flex-col">

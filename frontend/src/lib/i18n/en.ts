@@ -607,6 +607,7 @@ export const en = {
   "budgets.used": "Used",
   "dash.showChart": "Show chart",
   "dash.showTable": "Show table",
+  "dash.tileError": "Couldn't load",
   "dash.widgetError": "Couldn't load {widget}.",
   "dash.vsPeriod": "vs {period}",
   "dash.weekShort": "Week {week}",

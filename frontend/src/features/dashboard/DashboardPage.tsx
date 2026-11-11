@@ -109,6 +109,7 @@ function KpiTile({
   loading,
   to,
   valueClass,
+  failed,
 }: {
   label: string;
   value: string;
@@ -116,6 +117,8 @@ function KpiTile({
   loading: boolean;
   to?: string;
   valueClass?: string;
+  /** The tile's own data failed: show a dash, never a computed value. `delta` then carries the retry note. */
+  failed?: boolean;
 }) {
   const body = loading ? (
     <div aria-busy="true">
@@ -134,12 +137,29 @@ function KpiTile({
     </>
   );
   const box = "block min-h-28 rounded-md border border-line bg-surface p-4";
-  return to && !loading ? (
+  return to && !loading && !failed ? (
     <Link to={to} className={cn(box, "transition-colors hover:bg-black/[0.02]")}>
       {body}
     </Link>
   ) : (
     <div className={box}>{body}</div>
+  );
+}
+
+function RetryNote({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  const t = useT();
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2">
+      <span>{t("dash.tileError")}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="font-medium text-brand underline-offset-4 hover:underline disabled:opacity-60"
+      >
+        {t("common.retry")}
+      </button>
+    </span>
   );
 }
 
@@ -340,6 +360,11 @@ export function DashboardPage() {
   const pBalance = num(prev.data?.balance);
   const savings = income > 0 ? balance / income : null;
   const pSavings = pIncome > 0 ? (pIncome - pExpense) / pIncome : null;
+  const failedOf = (q: { isError: boolean; data?: unknown }) => q.isError && !q.data;
+  const countFailed = failedOf(recent);
+  const prevCountFailed = failedOf(prevCount);
+  const avgFailed = failedOf(expenseCount);
+  const prevAvgFailed = failedOf(prevExpenseCount);
   const count = recent.data?.total ?? 0;
   const pCount = prevCount.data?.total ?? 0;
   const eCount = expenseCount.data?.total ?? 0;
@@ -497,24 +522,36 @@ export function DashboardPage() {
           />
           <KpiTile
             label={t("dash.transactions")}
-            value={formatNumber(count)}
+            value={countFailed ? EMPTY : formatNumber(count)}
+            failed={countFailed}
             loading={recent.isLoading || prevCount.isLoading}
             delta={
+              countFailed ? (
+                <RetryNote onRetry={() => void recent.refetch()} retrying={recent.isFetching} />
+              ) : prevCountFailed ? (
+                <RetryNote onRetry={() => void prevCount.refetch()} retrying={prevCount.isFetching} />
+              ) : (
               <Delta
                 text={formatNumber(count - pCount, { signDisplay: "exceptZero" })}
                 ratio={change(count, pCount).ratio}
                 up={count === pCount ? null : count > pCount}
                 vs={vsLabel}
               />
+              )
             }
             to={listHref()}
           />
           <KpiTile
             label={t("dash.avgExpense")}
-            value={avgExpense === null ? EMPTY : formatMoney(avgExpense)}
+            value={avgFailed || avgExpense === null ? EMPTY : formatMoney(avgExpense)}
+            failed={avgFailed}
             loading={summaryLoading || expenseCount.isLoading || prevExpenseCount.isLoading}
             delta={
-              avgExpense !== null && pAvgExpense !== null ? (
+              avgFailed ? (
+                <RetryNote onRetry={() => void expenseCount.refetch()} retrying={expenseCount.isFetching} />
+              ) : prevAvgFailed ? (
+                <RetryNote onRetry={() => void prevExpenseCount.refetch()} retrying={prevExpenseCount.isFetching} />
+              ) : avgExpense !== null && pAvgExpense !== null ? (
                 moneyDelta(avgExpense, pAvgExpense)
               ) : (
                 <span>{t("dash.noComparison")}</span>
@@ -568,7 +605,10 @@ export function DashboardPage() {
                 label={yLabel(t("dash.axisVnd"))}
               />
               <Tooltip
-                formatter={(value, name) => [money(Math.abs(Number(value))), name]}
+                formatter={(value, name) => [
+                  money(name === t("dash.legend.expense") ? Math.abs(Number(value)) : Number(value)),
+                  name,
+                ]}
                 contentStyle={tooltipStyle}
               />
               <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12 }} formatter={legendText} />
@@ -579,7 +619,7 @@ export function DashboardPage() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <NeedsAttention from={range.from} to={range.to} net={balance} netReady={Boolean(cur.data)} />
+        <NeedsAttention from={range.from} to={range.to} net={cur.data ? balance : null} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">

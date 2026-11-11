@@ -609,6 +609,7 @@ export const vi: Dict = {
   "budgets.used": "Đã dùng",
   "dash.showChart": "Xem biểu đồ",
   "dash.showTable": "Xem dạng bảng",
+  "dash.tileError": "Không tải được",
   "dash.widgetError": "Không tải được {widget}.",
   "dash.vsPeriod": "so với {period}",
   "dash.weekShort": "Tuần {week}",

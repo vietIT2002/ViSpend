@@ -20,6 +20,7 @@ The mobile check emulates 390x844, prints `viewport 390px  scrollWidth N  ok|OVE
 
 - `?notoken` on any URL skips the seeded fake login token, so you see the logged-out state.
 - `AUDIT_LANG=en|vi` (default `vi`) sets the UI language the page starts in, e.g. `AUDIT_LANG=en npm run audit:serve`.
+- `MOCK_FAIL=a,b` makes the mock answer 500 to any request whose path+query contains one of the substrings, e.g. `MOCK_FAIL=page_size=1` or `MOCK_FAIL=dashboard/summary`, to see failure states.
 - `AUDIT_PORT` and `MOCK_PORT` override ports 5179 and 5181.
 
 ## Mock data

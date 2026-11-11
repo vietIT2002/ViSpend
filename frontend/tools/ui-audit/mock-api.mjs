@@ -184,11 +184,15 @@ function formFields(raw) {
   return out;
 }
 
+// MOCK_FAIL=a,b: any request whose path+query contains one of these substrings answers 500.
+const FAIL = (process.env.MOCK_FAIL || "").split(",").filter(Boolean);
+
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   const p = url.pathname.replace(/^\/api/, "");
   const q = Object.fromEntries(url.searchParams);
   const m = req.method;
+  if (FAIL.some((f) => (p + url.search).includes(f))) return send(res, 500, { detail: "mock_failure" });
 
   if (p === "/auth/login" && m === "POST") {
     const f = formFields(await readRaw(req));
