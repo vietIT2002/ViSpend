@@ -70,7 +70,7 @@ export function ForgotPasswordPage() {
           <LanguageToggle />
         </div>
         <div className="mb-8 text-center">
-          <span className="mx-auto mb-4 grid size-11 place-items-center rounded-lg bg-brand text-white">
+          <span className="mx-auto mb-4 grid size-11 place-items-center rounded-lg bg-brand-bright text-white">
             <IconSpendMark size={23} />
           </span>
           <h1 className="display text-3xl text-ink">{t("forgot.title")}</h1>

@@ -63,7 +63,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
     <div className="flex items-center gap-4">
       <span
         className={cn(
-          "grid shrink-0 place-items-center rounded-lg bg-brand text-white shadow-[0_10px_24px_rgb(60_179_113/0.18)]",
+          "grid shrink-0 place-items-center rounded-lg bg-brand-bright text-white shadow-[0_10px_24px_rgb(60_179_113/0.18)]",
           compact ? "size-10" : "size-12",
         )}
       >
