@@ -470,6 +470,8 @@ export const vi: Dict = {
   "accounts.restoreAria": "Khôi phục ví {name}",
   "accounts.emptyTitle": "Chưa có ví nào",
   "accounts.emptyBody": "Thêm tiền mặt, ngân hàng hoặc ví điện tử để bắt đầu theo dõi số dư.",
+  "accounts.noActiveTitle": "Không có ví đang dùng",
+  "accounts.noActiveBody": "Tất cả ví đã được lưu trữ. Thêm ví mới để theo dõi số dư trở lại.",
   "accounts.loadError": "Không tải được danh sách ví. Kiểm tra kết nối và thử lại.",
   "accounts.deleteTitle": "Xoá ví {name}?",
   "accounts.deleteBody": "Ví sẽ bị xoá vĩnh viễn. Ví đã có giao dịch không thể xoá; hãy lưu trữ thay vì xoá.",

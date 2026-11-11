@@ -222,6 +222,16 @@ export function AccountsPage() {
               </Button>
             }
           />
+        ) : !loading && active.length === 0 ? (
+          <EmptyState
+            title={t("accounts.noActiveTitle")}
+            body={t("accounts.noActiveBody")}
+            action={
+              <Button onClick={openAdd}>
+                <Plus size={16} aria-hidden="true" /> {t("accounts.addAccount")}
+              </Button>
+            }
+          />
         ) : (
           <AccountTable titleId={activeTitleId} rows={active} loading={loading} {...tableProps} />
         )}

@@ -468,6 +468,8 @@ export const en = {
   "accounts.restoreAria": "Restore account {name}",
   "accounts.emptyTitle": "No accounts yet",
   "accounts.emptyBody": "Add your cash, bank or e-wallet to start tracking balances.",
+  "accounts.noActiveTitle": "No active accounts",
+  "accounts.noActiveBody": "All your accounts are archived. Add an account to track balances again.",
   "accounts.loadError": "Couldn't load accounts. Check your connection and try again.",
   "accounts.deleteTitle": "Delete account {name}?",
   "accounts.deleteBody": "The account is removed for good. Accounts that have transactions can't be deleted; archive them instead.",
