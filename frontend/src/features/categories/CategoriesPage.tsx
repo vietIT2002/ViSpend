@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { Lock } from "lucide-react";
+import { useId, useRef, useState } from "react";
 
 import { CategoryIcon, IconCheck, IconPencil, IconPlus, IconTrash, IconX } from "../../components/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
+import { Card, CardHeader } from "../../components/ui/card";
 import { ColorSwatchPicker, DEFAULT_CATEGORY_COLOR } from "../../components/ui/color-swatch-picker";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Input } from "../../components/ui/input";
-import { Select } from "../../components/ui/select";
-import { useCategoryLabel, useErrorText, useT } from "../../lib/i18n";
+import { FieldError, Label } from "../../components/ui/label";
+import { PageHeader } from "../../components/ui/page-header";
+import { Segmented } from "../../components/ui/segmented";
+import { Skeleton } from "../../components/ui/skeleton";
+import { EmptyState, ErrorState, InlineAlert } from "../../components/ui/states";
+import { useToast } from "../../components/ui/toast";
+import { formatNumber } from "../../lib/format";
+import { useCategoryLabel, useErrorText, useLocale, useT } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 import type { Category, TxnType } from "../../types";
-import {
-  useCategories,
-  useCreateCategory,
-  useDeleteCategory,
-  useUpdateCategory,
-} from "./hooks";
+import { useCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from "./hooks";
 
 const ICON_KEYS = [
   "tag", "food", "coffee", "cart", "bus", "car", "plane", "bed",
@@ -26,125 +29,243 @@ const ICON_KEYS = [
 ];
 
 export function CategoriesPage() {
-  const { data: cats = [] } = useCategories();
-  const create = useCreateCategory();
   const t = useT();
-  const errText = useErrorText();
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const locale = useLocale();
+  const categoryLabel = useCategoryLabel();
+  const query = useCategories();
+  const del = useDeleteCategory();
+  const [deleting, setDeleting] = useState<Category | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const [newType, setNewType] = useState<TxnType>("expense");
 
-  const [name, setName] = useState("");
-  const [type, setType] = useState<TxnType>("expense");
-  const [icon, setIcon] = useState("tag");
-  const [color, setColor] = useState<string>(DEFAULT_CATEGORY_COLOR);
+  const sorted = [...(query.data ?? [])].sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b), locale));
+  const expense = sorted.filter((c) => c.type === "expense");
+  const income = sorted.filter((c) => c.type === "income");
 
-  function add() {
-    if (!name.trim()) return;
-    setError(null);
-    create.mutate(
-      { name: name.trim(), type, icon, color },
-      {
-        onSuccess: () => setName(""),
-        onError: (e) => setError(errText(e, "cat.createError")),
-      },
-    );
+  function startAdding(type: TxnType) {
+    setNewType(type);
+    nameRef.current?.focus();
   }
 
-  const expense = cats.filter((c) => c.type === "expense");
-  const income = cats.filter((c) => c.type === "income");
-
   return (
-    <div className="space-y-6">
-      <header className="max-w-2xl space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.system")}</p>
-        <h1 className="display text-3xl text-ink sm:text-4xl">{t("cat.title")}</h1>
-        <p className="text-sm text-muted">{t("cat.subtitle")}</p>
-      </header>
+    <div className="space-y-4">
+      <PageHeader title={t("cat.title")} />
 
-      <Card className="rise space-y-4 p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_160px_auto] lg:items-end">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-              {t("cat.newCategory")}
-            </label>
-            <Input
-              placeholder={t("cat.namePlaceholder")}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && add()}
-            />
-          </div>
-          <Select value={type} onChange={(e) => setType(e.target.value as TxnType)}>
-            <option value="expense">{t("type.expense")}</option>
-            <option value="income">{t("type.income")}</option>
-          </Select>
-          <Button onClick={add} disabled={create.isPending}>
-            <IconPlus size={16} /> {t("common.add")}
-          </Button>
+      <NewCategoryForm nameRef={nameRef} type={newType} onTypeChange={setNewType} />
+
+      {query.isError && !query.data ? (
+        <Card>
+          <ErrorState message={t("cat.loadError")} onRetry={() => void query.refetch()} retrying={query.isFetching} />
+        </Card>
+      ) : (
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <CategoryList
+            title={t("cat.expenseCategories")}
+            items={expense}
+            loading={query.isLoading}
+            emptyBody={t("cat.noneExpense")}
+            onAdd={() => startAdding("expense")}
+            onDelete={setDeleting}
+          />
+          <CategoryList
+            title={t("cat.incomeCategories")}
+            items={income}
+            loading={query.isLoading}
+            emptyBody={t("cat.noneIncome")}
+            onAdd={() => startAdding("income")}
+            onDelete={setDeleting}
+          />
         </div>
+      )}
 
-        <div className="space-y-4">
-          <div>
-            <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.icon")}</span>
-            <div className="flex flex-wrap gap-1.5">
-              {ICON_KEYS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-label={`Icon ${k}`}
-                  onClick={() => setIcon(k)}
-                  className={cn(
-                    "grid size-9 place-items-center rounded-md border transition-colors",
-                    icon === k ? "border-brand bg-brand-soft text-brand-dark" : "border-line text-muted hover:text-ink",
-                  )}
-                >
-                  <CategoryIcon name={k} size={16} />
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span id="category-color-label" className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{t("cat.color")}</span>
-            <ColorSwatchPicker value={color} onChange={setColor} labelledBy="category-color-label" />
-          </div>
-        </div>
-
-        {error && (
-          <p className="rounded-md border border-pastel-red-ink/20 bg-pastel-red px-3 py-2 text-xs text-pastel-red-ink">
-            {error}
-          </p>
-        )}
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Section title={t("cat.expenseCategories")} items={expense} onError={setError} />
-        <Section title={t("cat.incomeCategories")} items={income} onError={setError} />
-      </div>
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={deleting ? t("cat.deleteTitle", { name: categoryLabel(deleting) }) : ""}
+        confirmLabel={t("cat.deleteConfirm")}
+        onConfirm={async () => {
+          if (!deleting) return;
+          const name = categoryLabel(deleting);
+          await del.mutateAsync(deleting.id);
+          toast(t("cat.toastDeleted", { name }));
+        }}
+        onClose={() => setDeleting(null)}
+      >
+        <p>{t("cat.deleteBody")}</p>
+      </ConfirmDialog>
     </div>
   );
 }
 
-function Section({
+function NewCategoryForm({
+  nameRef,
+  type,
+  onTypeChange,
+}: {
+  nameRef: React.RefObject<HTMLInputElement | null>;
+  type: TxnType;
+  onTypeChange: (type: TxnType) => void;
+}) {
+  const t = useT();
+  const toast = useToast();
+  const errText = useErrorText();
+  const create = useCreateCategory();
+  const nameId = useId();
+  const iconLabelId = useId();
+  const colorLabelId = useId();
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("tag");
+  const [color, setColor] = useState<string>(DEFAULT_CATEGORY_COLOR);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  async function add() {
+    const trimmed = name.trim();
+    setServerError(null);
+    if (!trimmed) {
+      setNameError(t("cat.nameRequired"));
+      nameRef.current?.focus();
+      return;
+    }
+    setNameError(null);
+    try {
+      await create.mutateAsync({ name: trimmed, type, icon, color });
+      toast(t("cat.toastCreated", { name: trimmed, type: t(`type.${type}`) }));
+      setName("");
+    } catch (err) {
+      setServerError(errText(err, "cat.createError"));
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title={t("cat.newCategory")} description={t("cat.subtitle")} />
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+        className="space-y-4 p-4"
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,24rem)_auto] sm:items-start">
+          <div>
+            <Label htmlFor={nameId} required>
+              {t("cat.name")}
+            </Label>
+            <Input
+              id={nameId}
+              ref={nameRef}
+              placeholder={t("cat.namePlaceholder")}
+              value={name}
+              maxLength={60}
+              onChange={(e) => setName(e.target.value)}
+              aria-invalid={nameError ? true : undefined}
+              aria-describedby={nameError ? `${nameId}-error` : undefined}
+            />
+            <FieldError id={`${nameId}-error`} message={nameError ?? undefined} />
+          </div>
+          <Segmented<TxnType>
+            label={t("txnModal.type")}
+            value={type}
+            onChange={onTypeChange}
+            options={[
+              { value: "expense", label: t("type.expense") },
+              { value: "income", label: t("type.income") },
+            ]}
+          />
+        </div>
+
+        <div>
+          <span id={iconLabelId} className="mb-1.5 block text-sm font-medium text-ink">
+            {t("cat.icon")}
+          </span>
+          <div role="radiogroup" aria-labelledby={iconLabelId} className="flex flex-wrap gap-1.5">
+            {ICON_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={icon === k}
+                aria-label={t("cat.iconOption", { name: k })}
+                title={k}
+                onClick={() => setIcon(k)}
+                className={cn(
+                  "grid size-9 place-items-center rounded border transition-colors",
+                  icon === k ? "border-brand bg-brand-soft text-brand" : "border-line-strong text-charcoal hover:bg-black/[0.03]",
+                )}
+              >
+                <CategoryIcon name={k} size={16} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <span id={colorLabelId} className="mb-1.5 block text-sm font-medium text-ink">
+            {t("cat.color")}
+          </span>
+          <ColorSwatchPicker value={color} onChange={setColor} labelledBy={colorLabelId} />
+        </div>
+
+        {serverError && <InlineAlert tone="error">{serverError}</InlineAlert>}
+
+        <div className="flex justify-end border-t border-line pt-4">
+          <Button type="submit" loading={create.isPending}>
+            {!create.isPending && <IconPlus size={16} aria-hidden="true" />}
+            {t("cat.addCategory")}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function CategoryList({
   title,
   items,
-  onError,
+  loading,
+  emptyBody,
+  onAdd,
+  onDelete,
 }: {
   title: string;
   items: Category[];
-  onError: (m: string) => void;
+  loading: boolean;
+  emptyBody: string;
+  onAdd: () => void;
+  onDelete: (category: Category) => void;
 }) {
   const t = useT();
   return (
-    <Card className="rise overflow-hidden">
-      <div className="border-b border-line px-5 py-4">
-        <h2 className="font-medium text-ink">{title}</h2>
-        <p className="mt-1 text-xs text-muted">{t("cat.savedLabels", { count: items.length })}</p>
-      </div>
-      {items.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-muted">{t("cat.none")}</p>
+    <Card className="overflow-hidden">
+      <CardHeader
+        title={title}
+        action={!loading && <span className="nums text-sm text-muted">{t("cat.count", { count: formatNumber(items.length) })}</span>}
+      />
+      {loading ? (
+        <ul className="divide-y divide-line" aria-busy="true">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <li key={i} className="flex h-12 items-center gap-3 px-4" aria-hidden="true">
+              <Skeleton className="size-8" />
+              <Skeleton className="h-4 w-40" />
+            </li>
+          ))}
+        </ul>
+      ) : items.length === 0 ? (
+        <EmptyState
+          title={t("cat.none")}
+          body={emptyBody}
+          action={
+            <Button variant="secondary" onClick={onAdd}>
+              <IconPlus size={16} aria-hidden="true" /> {t("cat.addCategory")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="divide-y divide-line">
           {items.map((c) => (
-            <CategoryRow key={c.id} category={c} onError={onError} />
+            <CategoryRow key={c.id} category={c} onDelete={() => onDelete(c)} />
           ))}
         </ul>
       )}
@@ -152,96 +273,128 @@ function Section({
   );
 }
 
-function CategoryRow({
-  category: c,
-  onError,
-}: {
-  category: Category;
-  onError: (m: string) => void;
-}) {
-  const update = useUpdateCategory();
-  const del = useDeleteCategory();
+function CategoryRow({ category: c, onDelete }: { category: Category; onDelete: () => void }) {
   const t = useT();
+  const toast = useToast();
   const errText = useErrorText();
   const categoryLabel = useCategoryLabel();
+  const update = useUpdateCategory();
+  const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(c.name);
+  const [error, setError] = useState<string | null>(null);
+  const label = categoryLabel(c);
 
-  function saveName() {
-    if (!editName.trim()) return;
-    update.mutate(
-      { id: c.id, name: editName.trim() },
-      {
-        onSuccess: () => setEditing(false),
-        onError: (e) => onError(errText(e, "cat.renameError")),
-      },
-    );
+  async function saveName() {
+    const next = editName.trim();
+    if (!next) return setError(t("cat.nameRequired"));
+    if (next === c.name) {
+      setEditing(false);
+      return setError(null);
+    }
+    setError(null);
+    try {
+      await update.mutateAsync({ id: c.id, name: next });
+      toast(t("cat.toastRenamed", { from: label, to: next }));
+      setEditing(false);
+    } catch (err) {
+      setError(errText(err, "cat.renameError"));
+    }
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-      <span
-        className="grid size-9 shrink-0 place-items-center rounded-md"
-        style={{ backgroundColor: (c.color ?? "#cbd5d1") + "22", color: c.color ?? "#5b6770" }}
-      >
-        <CategoryIcon name={c.icon} size={16} />
-      </span>
+    <li className="px-4 py-2">
+      <div className="flex min-h-9 items-center gap-3">
+        <span
+          className="grid size-8 shrink-0 place-items-center rounded"
+          style={{ backgroundColor: (c.color ?? "#9b9a95") + "22", color: c.color ?? "#5b6770" }}
+          aria-hidden="true"
+        >
+          <CategoryIcon name={c.icon} size={16} />
+        </span>
 
-      {editing ? (
-        <Input
-          autoFocus
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") saveName();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          className="h-9 min-w-[180px] flex-1"
-        />
-      ) : (
-        <span className="min-w-0 flex-1 truncate font-medium text-ink">{categoryLabel(c)}</span>
-      )}
-
-      <div className="flex items-center gap-1.5">
         {editing ? (
           <>
-            <Button onClick={saveName} className="size-9 px-0" aria-label={t("cat.saveAria")}>
-              <IconCheck size={16} />
+            <label htmlFor={inputId} className="sr-only">
+              {t("cat.renameLabel", { name: label })}
+            </label>
+            <Input
+              id={inputId}
+              autoFocus
+              value={editName}
+              maxLength={60}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveName();
+                if (e.key === "Escape") {
+                  setEditing(false);
+                  setError(null);
+                }
+              }}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? `${inputId}-error` : undefined}
+              className="h-9 min-w-0 flex-1 sm:h-9"
+            />
+            <Button
+              onClick={() => void saveName()}
+              loading={update.isPending}
+              className="size-9 px-0 sm:size-9"
+              aria-label={t("cat.saveAria", { name: label })}
+            >
+              {!update.isPending && <IconCheck size={16} aria-hidden="true" />}
             </Button>
-            <Button variant="ghost" onClick={() => setEditing(false)} className="size-9 px-0" aria-label={t("cat.cancelAria")}>
-              <IconX size={16} />
-            </Button>
-          </>
-        ) : c.is_default ? (
-          <Badge tone="neutral">{t("cat.default")}</Badge>
-        ) : (
-          <>
             <Button
               variant="ghost"
               onClick={() => {
-                setEditName(c.name);
-                setEditing(true);
+                setEditing(false);
+                setError(null);
               }}
-              className="size-9 px-0"
-              aria-label={t("common.rename")}
+              className="size-9 px-0 sm:size-9"
+              aria-label={t("cat.cancelAria")}
             >
-              <IconPencil size={16} />
+              <IconX size={16} aria-hidden="true" />
             </Button>
-            <Button
-              variant="danger"
-              onClick={() =>
-                del.mutate(c.id, {
-                  onError: (e) => onError(errText(e, "cat.deleteError")),
-                })
-              }
-              className="size-9 px-0"
-              aria-label={t("common.delete")}
-            >
-              <IconTrash size={16} />
-            </Button>
+          </>
+        ) : (
+          <>
+            <span className="min-w-0 flex-1 truncate font-medium text-ink">{label}</span>
+            {c.is_default ? (
+              <span className="inline-flex items-center gap-1.5" title={t("cat.defaultHint")}>
+                <Badge tone="neutral">
+                  <Lock size={12} aria-hidden="true" />
+                  {t("cat.default")}
+                </Badge>
+                <span className="sr-only">{t("cat.defaultHint")}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setEditName(c.name);
+                    setEditing(true);
+                  }}
+                  className="size-8 px-0 sm:size-8"
+                  title={t("common.rename")}
+                  aria-label={t("cat.renameAria", { name: label })}
+                >
+                  <IconPencil size={16} aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={onDelete}
+                  className="size-8 px-0 sm:size-8"
+                  title={t("common.delete")}
+                  aria-label={t("cat.deleteAria", { name: label })}
+                >
+                  <IconTrash size={16} aria-hidden="true" />
+                </Button>
+              </span>
+            )}
           </>
         )}
       </div>
+      {editing && <FieldError id={`${inputId}-error`} message={error ?? undefined} />}
     </li>
   );
 }
