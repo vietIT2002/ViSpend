@@ -2,6 +2,10 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
 
+// Any username signs in with this password; anything else is invalid_credentials.
+const PASSWORD = "demo1234";
+// 1x1 PNG served as the receipt image.
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 const PORT = Number(process.env.MOCK_PORT || 5181);
 const TODAY = "2026-11-11";
 
@@ -72,7 +76,7 @@ const expenseCats = categories.filter((c) => c.type === "expense" && c.icon !== 
 for (let d = 1; d <= 41; d++) {
   const day = new Date(Date.UTC(2026, 9, d)); // Oct 1 .. Nov 10
   const iso = day.toISOString().slice(0, 10);
-  const n = 1 + Math.floor(rnd() * 3);
+  const n = 2 + Math.floor(rnd() * 3); // ~3 a day, ~125 rows in total
   for (let i = 0; i < n; i++) {
     const c = expenseCats[Math.floor(rnd() * expenseCats.length)];
     addTxn(iso, "expense", c.id, Math.round((20 + rnd() * 480)) * 1000, notes[Math.floor(rnd() * notes.length)]);
@@ -159,12 +163,25 @@ function send(res, status, body) {
   res.end(body === undefined ? "" : JSON.stringify(body));
 }
 
-function readBody(req) {
+function readRaw(req) {
   return new Promise((resolve) => {
     let data = "";
     req.on("data", (c) => (data += c));
-    req.on("end", () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
+    req.on("end", () => resolve(data));
   });
+}
+async function readBody(req) {
+  const data = await readRaw(req);
+  try { return data ? JSON.parse(data) : {}; } catch { return {}; }
+}
+// Multipart or urlencoded form fields (login sends FormData).
+function formFields(raw) {
+  const out = {};
+  const nl = String.fromCharCode(13) + "?" + String.fromCharCode(10);
+  const re = new RegExp('name="([^"]+)"' + nl + nl + "([^" + String.fromCharCode(13, 10) + "]*)", "g");
+  for (const m of raw.matchAll(re)) out[m[1]] = m[2];
+  if (!Object.keys(out).length) for (const [k, v] of new URLSearchParams(raw)) out[k] = v;
+  return out;
 }
 
 http.createServer(async (req, res) => {
@@ -173,6 +190,39 @@ http.createServer(async (req, res) => {
   const q = Object.fromEntries(url.searchParams);
   const m = req.method;
 
+  if (p === "/auth/login" && m === "POST") {
+    const f = formFields(await readRaw(req));
+    if (!f.username || f.password !== PASSWORD) return send(res, 401, { detail: "invalid_credentials" });
+    return send(res, 200, { access_token: "mock-token", refresh_token: "mock-refresh", token_type: "bearer", user });
+  }
+  if (p === "/auth/refresh" && m === "POST") {
+    const b = await readBody(req);
+    if (b.refresh_token !== "mock-refresh") return send(res, 401, { detail: "invalid_token" });
+    return send(res, 200, { access_token: "mock-token", refresh_token: "mock-refresh", token_type: "bearer", user });
+  }
+  if (p === "/auth/register" && m === "POST") {
+    const b = await readBody(req);
+    if (b.username === user.username) return send(res, 409, { detail: "username_taken" });
+    return send(res, 201, { ...user, id: randomUUID(), username: b.username, email: null, full_name: null });
+  }
+  if (p === "/auth/google" && m === "POST") {
+    await readBody(req);
+    return send(res, 200, { access_token: "mock-token", refresh_token: "mock-refresh", token_type: "bearer", user });
+  }
+  if (p === "/auth/forgot-password" && m === "POST") {
+    await readBody(req);
+    return send(res, 200, { detail: "ok", reset_token: "mock-reset-token" });
+  }
+  if (p === "/auth/reset-password" && m === "POST") {
+    const b = await readBody(req);
+    if (b.token !== "mock-reset-token") return send(res, 400, { detail: "invalid_reset_token" });
+    return send(res, 200, { detail: "Password has been reset" });
+  }
+  if (p === "/auth/change-password" && m === "POST") {
+    const b = await readBody(req);
+    if (b.current_password !== PASSWORD) return send(res, 400, { detail: "current_password_incorrect" });
+    return send(res, 200, { detail: "Password updated" });
+  }
   if (p === "/health") return send(res, 200, { status: "ok" });
   if (p === "/auth/me" && m === "GET") return send(res, 200, user);
   if (p === "/auth/me" && m === "PATCH") { Object.assign(user, await readBody(req)); return send(res, 200, user); }
@@ -181,7 +231,9 @@ http.createServer(async (req, res) => {
   if (p.startsWith("/categories/") && m === "DELETE") {
     const id = p.split("/")[2];
     if (transactions.some((t) => t.category_id === id)) return send(res, 409, { detail: "category_in_use" });
-    categories.splice(categories.findIndex((c) => c.id === id), 1); return send(res, 204);
+    const i = categories.findIndex((c) => c.id === id);
+    if (i < 0) return send(res, 404, { detail: "category_not_found" });
+    categories.splice(i, 1); return send(res, 204);
   }
   if (p === "/transactions/receipt-duplicate") return send(res, 200, { duplicate: false });
   if (p === "/transactions" && m === "GET") {
@@ -200,7 +252,28 @@ http.createServer(async (req, res) => {
     if (!c) return send(res, 404, { detail: "category_not_found" });
     Object.assign(c, await readBody(req)); return send(res, 200, c);
   }
-  if (p.startsWith("/transactions/") && m === "DELETE") { const id = p.split("/")[2]; transactions.splice(transactions.findIndex((t) => t.id === id), 1); return send(res, 204); }
+  if (p === "/transactions/parse" && m === "POST") {
+    const b = await readBody(req);
+    const text = String(b.text ?? "");
+    const num = text.match(/([0-9]+(?:[.,][0-9]+)?) ?(k|tr|triệu|nghìn)?/i);
+    let amount = null;
+    if (num) { const mult = /^(k|nghìn)$/i.test(num[2] ?? "") ? 1000 : /^(tr|triệu)$/i.test(num[2] ?? "") ? 1000000 : 1; amount = `${Math.round(Number(num[1].replace(",", ".")) * mult)}.00`; }
+    return send(res, 200, { type: "expense", amount, occurred_on: TODAY, category_id: byName.food, note: text || null, method: "cash", confidence: 0.82 });
+  }
+  const parts = p.split("/"); // ["", "transactions", id, "receipt"]
+  const receiptMatch = parts.length === 4 && parts[1] === "transactions" && parts[3] === "receipt" ? parts : null;
+  if (receiptMatch && (m === "POST" || m === "GET")) {
+    const t = transactions.find((x) => x.id === receiptMatch[2]);
+    if (!t) { await readBody(req); return send(res, 404, { detail: "transaction_not_found" }); }
+    if (m === "POST") { await readBody(req); t.has_receipt = true; return send(res, 200, t); }
+    if (!t.has_receipt) return send(res, 404, { detail: "receipt_not_found" });
+    res.writeHead(200, { "content-type": "image/png" }); return res.end(PNG);
+  }
+  if (p.startsWith("/transactions/") && m === "DELETE") {
+    const i = transactions.findIndex((t) => t.id === p.split("/")[2]);
+    if (i < 0) return send(res, 404, { detail: "transaction_not_found" });
+    transactions.splice(i, 1); return send(res, 204);
+  }
   if (p === "/budgets" && m === "GET") return send(res, 200, plan(q.month));
   if (p === "/budgets/allocations" && m === "PUT") {
     const b = await readBody(req); const list = (allocations[b.month] ??= []);
@@ -210,8 +283,11 @@ http.createServer(async (req, res) => {
   }
   if (p.startsWith("/budgets/allocations/") && m === "DELETE") {
     const id = p.split("/")[3];
-    for (const list of Object.values(allocations)) { const i = list.findIndex((a) => a.id === id); if (i >= 0) list.splice(i, 1); }
-    return send(res, 204);
+    for (const list of Object.values(allocations)) {
+      const i = list.findIndex((a) => a.id === id);
+      if (i >= 0) { list.splice(i, 1); return send(res, 204); }
+    }
+    return send(res, 404, { detail: "allocation_not_found" });
   }
   if (p === "/budgets/copy" && m === "POST") {
     const b = await readBody(req); const src = allocations[b.from_month] ?? [];
@@ -257,5 +333,6 @@ http.createServer(async (req, res) => {
     return send(res, 200, rows);
   }
   if (p === "/dashboard/trend") return send(res, 200, trend(q.granularity ?? "day", q.from, q.to));
+  console.log(`UNHANDLED ${m} ${p}`);
   send(res, 404, { detail: "not_found" });
 }).listen(PORT, "127.0.0.1", () => console.log(`mock api on ${PORT}, today ${TODAY}`));

@@ -25,3 +25,5 @@ The mobile check emulates 390x844, prints `viewport 390px  scrollWidth N  ok|OVE
 ## Mock data
 
 The mock is in-memory: edits last until it is restarted, and a restart resets all fixtures. Fixtures cover Oct-Nov 2026 transactions (two editable ones from the last 24 h), a 60-character category name, and accounts including an archived one, one with a 12.450.000.000 balance, and one that cannot be deleted (409 `account_in_use`).
+
+With `?notoken` you can sign in on the login page: any username with the password `demo1234` works. Requests the mock does not know are logged as `UNHANDLED <METHOD> <path>` in the `audit:mock` terminal and answered with 404.
