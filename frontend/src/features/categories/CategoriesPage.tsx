@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { CategoryIcon, IconCheck, IconPencil, IconPlus, IconTrash, IconX } from "../../components/icons";
 import { Badge } from "../../components/ui/badge";
@@ -119,6 +119,18 @@ function NewCategoryForm({
   const [nameError, setNameError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // Roving tabindex: one tab stop (checked icon, else the first); arrows select and move focus.
+  const tabStop = ICON_KEYS.includes(icon) ? icon : ICON_KEYS[0];
+  function onIconKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    const next = ICON_KEYS[(index + delta + ICON_KEYS.length) % ICON_KEYS.length];
+    setIcon(next);
+    const group = e.currentTarget.parentElement;
+    requestAnimationFrame(() => group?.querySelector<HTMLButtonElement>(`[data-value="${next}"]`)?.focus());
+  }
+
   async function add() {
     const trimmed = name.trim();
     setServerError(null);
@@ -181,12 +193,15 @@ function NewCategoryForm({
             {t("cat.icon")}
           </span>
           <div role="radiogroup" aria-labelledby={iconLabelId} className="flex flex-wrap gap-1.5">
-            {ICON_KEYS.map((k) => (
+            {ICON_KEYS.map((k, i) => (
               <button
                 key={k}
                 type="button"
                 role="radio"
                 aria-checked={icon === k}
+                data-value={k}
+                tabIndex={k === tabStop ? 0 : -1}
+                onKeyDown={(e) => onIconKeyDown(e, i)}
                 aria-label={t("cat.iconOption", { name: k })}
                 title={k}
                 onClick={() => setIcon(k)}
