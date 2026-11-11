@@ -97,7 +97,7 @@ The serif display face (Newsreader, `.display`) belongs to the sign-in and regis
 
 ## Layout
 
-Top navigation bar, 56px, white with a bottom border: five first-level items (Overview, Transactions, Budgets, Categories, Settings), the active one with a subtle grey fill and bold text. Content max width 1440px, 16–24px gutters. Lists open with the filter bar and the table in the first viewport; summary figures sit in one line or strip, never a row of KPI cards (KPI tiles are for the Overview only). Tables scroll inside their own container on narrow screens (with `relative` on the container); the Transactions list switches to one block per transaction below 768px.
+Top navigation bar, 56px, white with a bottom border: six first-level items (Overview, Transactions, Budgets, Accounts, Categories, Settings), collapsing to a menu below 1024px, the active one with a subtle grey fill and bold text. Content max width 1440px, 16–24px gutters. Lists open with the filter bar and the table in the first viewport; summary figures sit in one line or strip, never a row of KPI cards (KPI tiles are for the Overview only). Tables scroll inside their own container on narrow screens (with `relative` on the container); the Transactions list switches to one block per transaction below 768px.
 
 ## Elevation & Depth
 
@@ -113,7 +113,7 @@ Own small component set in `frontend/src/components/ui` (no shadcn): `Button` (p
 
 ## Do's and Don'ts
 
-- Do design first use, no results, loading and error (with Retry) for every list and widget. In development, `?state=empty|error|loading` forces them on Transactions and Budgets.
+- Do design first use, no results, loading and error (with Retry) for every list and widget. In development only, `?state=empty|error|loading` forces them on Transactions, Budgets and Accounts.
 - Do confirm deletes in a dialog that names the record and the consequence, with focus on Cancel; show server errors inside the dialog.
 - Do keep Save enabled until submit, show errors next to their field, keep the user's input when saving fails, and warn about unsaved changes (forms and the transaction dialog).
 - Do announce successes with a toast that names the record; keep errors inline until fixed.
@@ -141,6 +141,8 @@ Own small component set in `frontend/src/components/ui` (no shadcn): `Button` (p
 | Transaction | Locked (recorded more than 24 hours ago; the API refuses edits) | neutral, with a lock icon and the reason |
 | Category | Default (built in; cannot be renamed or deleted) | neutral, with a lock icon and the reason |
 | Account | Verified / Unverified | success / warning |
+| Account | Archived | neutral |
+| Account | In use (delete refused by the API) | not a badge: inline error inside the delete dialog |
 
 Tones: neutral, info, success, warning, danger. Every status shows its text label. Transaction type (Income / Expense) is a plain text column, not a status; income amounts are green with "+", expenses ink with "-".
 
@@ -149,8 +151,9 @@ Tones: neutral, info, success, warning, danger. Every status shows its text labe
 | Item | Route | Notes |
 |---|---|---|
 | Overview | `/` | `?period=this_month|last_month|3m|6m|custom&from&to` |
-| Transactions | `/transactions` | `?type&category&method&from&to&page&size` |
-| Budgets | `/budgets` | `?month=YYYY-MM` |
+| Transactions | `/transactions` | `?type&category&method&account&from&to&page&size`; `?state=` dev only |
+| Budgets | `/budgets` | `?month=YYYY-MM`; `?state=` dev only |
+| Accounts | `/accounts` | `?state=empty|error|loading` dev only |
 | Categories | `/categories` | |
 | Settings | `/settings` | Profile, Password (not for Google accounts), Language |
 
@@ -165,3 +168,12 @@ Tones: neutral, info, success, warning, danger. Every status shows its text labe
 | 2026-11-11 | Budget limits save on blur/Enter per row, with "Saved" status and inline errors | One field per row; a page-level Save bar would add a step for a single number |
 | 2026-11-11 | Overview compares month presets with the previous calendar month(s) | Equal-length day windows compared November with 2–31 October |
 | 2026-11-11 | "Tight" budgets use the warning tone, "Over" the danger tone | Danger is kept for limits that are already exceeded |
+| 2026-11-11 | Budgets as one table with a summary strip; `BudgetModal` adds a budget (D1) | List recipe: table first, no KPI cards, right-aligned numbers |
+| 2026-11-11 | Accounts as a table (Account, Type, Balance (VND), actions); archived accounts in a second titled table (D2) | Same list recipe; balances must align |
+| 2026-11-11 | In-table row controls are 32px so rows stay 40px; standalone controls are 36px (40px below 640px) | Spec Tables rule: 40px one-line rows |
+| 2026-11-11 | Top navigation collapses to a menu below 1024px | Six items no longer fit in one row on tablets and phones |
+| 2026-11-11 | `?state=empty|error|loading` exists in development only | Lets every empty, error and loading state be reviewed without breaking the API |
+
+## Verifying screens
+
+`frontend/tools/ui-audit/README.md` describes the audit harness: a mock API plus the real frontend (`npm run audit:mock`, `npm run audit:serve`), a per-screen audit and a 390px overflow check (`mobile-check.mjs`). Run it on every screen after a UI change.
