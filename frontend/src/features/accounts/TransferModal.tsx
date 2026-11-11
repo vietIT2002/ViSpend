@@ -132,7 +132,7 @@ export function TransferModal({
             </Label>
             <MoneyInput
               id={ids.amount}
-              autoFocus
+              data-autofocus
               value={amount}
               onValueChange={setAmount}
               placeholder="0"

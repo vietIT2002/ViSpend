@@ -152,7 +152,7 @@ export function AccountModal({
             </Label>
             <Input
               id={ids.name}
-              autoFocus
+              data-autofocus
               value={name}
               placeholder="TPBank"
               onChange={(e) => setName(e.target.value)}

@@ -258,6 +258,7 @@ export function TransactionModal({
             render={({ field }) => (
               <MoneyInput
                 id={ids.amount}
+                data-autofocus
                 value={field.value}
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
