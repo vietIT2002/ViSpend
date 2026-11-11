@@ -150,10 +150,10 @@ Tones: neutral, info, success, warning, danger. Every status shows its text labe
 
 | Item | Route | Notes |
 |---|---|---|
-| Overview | `/` | `?period=this_month|last_month|3m|6m|custom&from&to` |
+| Overview | `/` | `?period=this_month\|last_month\|3m\|6m\|custom&from&to` |
 | Transactions | `/transactions` | `?type&category&method&account&from&to&page&size`; `?state=` dev only |
 | Budgets | `/budgets` | `?month=YYYY-MM`; `?state=` dev only |
-| Accounts | `/accounts` | `?state=empty|error|loading` dev only |
+| Accounts | `/accounts` | `?state=empty\|error\|loading` dev only |
 | Categories | `/categories` | |
 | Settings | `/settings` | Profile, Password (not for Google accounts), Language |
 
@@ -172,7 +172,7 @@ Tones: neutral, info, success, warning, danger. Every status shows its text labe
 | 2026-11-11 | Accounts as a table (Account, Type, Balance (VND), actions); archived accounts in a second titled table (D2) | Same list recipe; balances must align |
 | 2026-11-11 | In-table row controls are 32px so rows stay 40px; standalone controls are 36px (40px below 640px) | Spec Tables rule: 40px one-line rows |
 | 2026-11-11 | Top navigation collapses to a menu below 1024px | Six items no longer fit in one row on tablets and phones |
-| 2026-11-11 | `?state=empty|error|loading` exists in development only | Lets every empty, error and loading state be reviewed without breaking the API |
+| 2026-11-11 | `?state=empty\|error\|loading` exists in development only | Lets every empty, error and loading state be reviewed without breaking the API |
 
 ## Verifying screens
 
