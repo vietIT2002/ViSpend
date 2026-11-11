@@ -1,15 +1,19 @@
 import { ChevronDown, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { FieldError, Label } from "../../components/ui/label";
 import { Modal } from "../../components/ui/modal";
+import { MoneyInput } from "../../components/ui/money-input";
 import { Select } from "../../components/ui/select";
-import { useErrorText, useLocale, useT } from "../../lib/i18n";
+import { InlineAlert } from "../../components/ui/states";
+import { useToast } from "../../components/ui/toast";
+import { formatDate, formatMoney, formatMonth } from "../../lib/format";
+import { useErrorText, useT } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
 import {
   type BudgetScope,
-  dateLabel,
   defaultBudgetScope,
   defaultCustomStart,
   effectiveFromForScope,
@@ -18,8 +22,6 @@ import {
   monthLastIso,
 } from "./dates";
 import { useUpsertBudgetAllocation } from "./hooks";
-
-const LABEL = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-muted";
 
 export function BudgetModal({
   open,
@@ -34,13 +36,16 @@ export function BudgetModal({
 }) {
   const upsert = useUpsertBudgetAllocation();
   const t = useT();
-  const locale = useLocale();
+  const toast = useToast();
   const errText = useErrorText();
+  const ids = { category: useId(), amount: useId(), date: useId() };
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [scope, setScope] = useState<BudgetScope>(() => defaultBudgetScope(month));
   const [customDate, setCustomDate] = useState(() => defaultCustomStart(month));
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errors, setErrors] = useState<{ category?: string; amount?: string; date?: string }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
 
   // Reset the form whenever it opens or the viewed month changes.
   useEffect(() => {
@@ -50,40 +55,71 @@ export function BudgetModal({
     setScope(defaultBudgetScope(month));
     setCustomDate(defaultCustomStart(month));
     setShowAdvanced(false);
+    setErrors({});
+    setServerError(null);
   }, [open, month]);
 
   const effectiveFrom = effectiveFromForScope(month, scope, customDate);
-  const customDateValid = scope !== "custom" || isDateInMonth(customDate, month);
-  const canSubmit = Boolean(categoryId) && Number(amount) > 0 && customDateValid && !upsert.isPending;
 
-  function submit() {
-    if (!canSubmit) return;
-    upsert.mutate(
-      { month, category_id: categoryId, amount, effective_from: effectiveFrom },
-      { onSuccess: onClose },
-    );
+  async function submit() {
+    if (upsert.isPending) return;
+    const next: typeof errors = {};
+    if (!categoryId) next.category = t("budgets.categoryError");
+    if (!amount || Number(amount) <= 0) next.amount = t("budgets.amountError");
+    if (scope === "custom" && !isDateInMonth(customDate, month))
+      next.date = t("errors.budget_effective_from_outside_month");
+    setErrors(next);
+    setServerError(null);
+    const first = (["category", "amount", "date"] as const).find((k) => next[k]);
+    if (first) {
+      document.getElementById(ids[first])?.focus();
+      return;
+    }
+    const category = options.find((o) => o.id === categoryId)?.name ?? "";
+    try {
+      await upsert.mutateAsync({ month, category_id: categoryId, amount, effective_from: effectiveFrom });
+      toast(t("budgets.toastSet", { category, month: formatMonth(month), amount: formatMoney(amount) }));
+      onClose();
+    } catch (err) {
+      setServerError(errText(err));
+    }
   }
 
   const scopeHint =
     scope === "month"
       ? t("budgets.scopeMonthHint")
       : scope === "custom"
-        ? t("budgets.scopeCustomHint", { date: dateLabel(effectiveFrom, locale) })
-        : t("budgets.scopeRemainingHint", { date: dateLabel(effectiveFrom, locale) });
+        ? t("budgets.scopeCustomHint", { date: formatDate(effectiveFrom) })
+        : t("budgets.scopeRemainingHint", { date: formatDate(effectiveFrom) });
 
   const scopeSummary =
     scope === "month"
       ? t("budgets.scopeMonth")
       : scope === "remaining"
         ? t("budgets.scopeRemaining")
-        : dateLabel(effectiveFrom, locale);
+        : formatDate(effectiveFrom);
 
   return (
     <Modal open={open} onClose={onClose} title={t("budgets.addBudget")} align="start">
-      <div className="space-y-4">
+      <form
+        noValidate
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
         <div>
-          <label className={LABEL}>{t("txn.colCategory")}</label>
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <Label htmlFor={ids.category} required>
+            {t("txn.colCategory")}
+          </Label>
+          <Select
+            id={ids.category}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            aria-invalid={errors.category ? true : undefined}
+            aria-describedby={errors.category ? `${ids.category}-error` : undefined}
+          >
             <option value="">{t("budgets.chooseCategory")}</option>
             {options.map((c) => (
               <option key={c.id} value={c.id}>
@@ -91,49 +127,51 @@ export function BudgetModal({
               </option>
             ))}
           </Select>
+          <FieldError id={`${ids.category}-error`} message={errors.category} />
         </div>
 
         <div>
-          <label className={LABEL}>{t("budgets.budgetLabel")}</label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">₫</span>
-            <Input
-              type="number"
-              inputMode="numeric"
-              autoFocus
-              className="nums h-12 pl-8 text-lg"
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-          </div>
+          <Label htmlFor={ids.amount} required>
+            {t("budgets.monthlyLimit")}
+          </Label>
+          <MoneyInput
+            id={ids.amount}
+            autoFocus
+            value={amount}
+            onValueChange={setAmount}
+            placeholder="0"
+            aria-invalid={errors.amount ? true : undefined}
+            aria-describedby={errors.amount ? `${ids.amount}-error` : undefined}
+          />
+          <FieldError id={`${ids.amount}-error`} message={errors.amount} />
         </div>
 
         {/* Advanced: when the budget starts. Collapsed by default to keep entry simple. */}
-        <div className="rounded-lg border border-dashed border-line-strong p-3">
+        <div className="rounded border border-dashed border-line-strong p-3">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-2"
+            className="flex w-full items-center justify-between gap-2 text-left"
+            aria-expanded={showAdvanced || scope === "custom" && Boolean(errors.date)}
             onClick={() => setShowAdvanced((s) => !s)}
           >
-            <span className="text-sm font-medium text-charcoal">{t("budgets.effectiveScope")}</span>
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-brand-dark">
+            <span className="text-sm font-medium text-ink">{t("budgets.effectiveScope")}</span>
+            <span className="flex items-center gap-1.5 text-sm font-medium text-brand-dark">
               {scopeSummary}
-              <ChevronDown size={14} className={cn("transition-transform", showAdvanced && "rotate-180")} />
+              <ChevronDown size={16} aria-hidden="true" className={cn("transition-transform", showAdvanced && "rotate-180")} />
             </span>
           </button>
 
-          {showAdvanced && (
+          {(showAdvanced || (scope === "custom" && Boolean(errors.date))) && (
             <div className="mt-3 space-y-2">
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t("budgets.effectiveScope")}>
                 {(["month", "remaining", "custom"] as BudgetScope[]).map((s) => (
                   <button
                     key={s}
                     type="button"
+                    aria-pressed={scope === s}
                     onClick={() => setScope(s)}
                     className={cn(
-                      "h-9 rounded-md border text-xs font-semibold transition-colors",
+                      "h-10 rounded border text-sm font-medium transition-colors sm:h-9",
                       scope === s
                         ? "border-brand bg-brand-soft text-brand-dark"
                         : "border-line-strong bg-surface text-charcoal hover:bg-black/[0.03]",
@@ -148,31 +186,41 @@ export function BudgetModal({
                 ))}
               </div>
               {scope === "custom" && (
-                <Input
-                  type="date"
-                  value={customDate}
-                  min={monthFirstIso(month)}
-                  max={monthLastIso(month)}
-                  aria-label={t("budgets.startDate")}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                />
+                <div>
+                  <Label htmlFor={ids.date} required>
+                    {t("budgets.startDate")}
+                  </Label>
+                  <Input
+                    id={ids.date}
+                    type="date"
+                    className="nums"
+                    value={customDate}
+                    min={monthFirstIso(month)}
+                    max={monthLastIso(month)}
+                    aria-invalid={errors.date ? true : undefined}
+                    aria-describedby={errors.date ? `${ids.date}-error` : undefined}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                  />
+                  <FieldError id={`${ids.date}-error`} message={errors.date} />
+                </div>
               )}
-              <p className="text-xs text-muted">{scopeHint}</p>
+              <p className="text-sm text-muted">{scopeHint}</p>
             </div>
           )}
         </div>
 
-        {upsert.isError && <p className="text-xs text-expense">{errText(upsert.error)}</p>}
+        {serverError && <InlineAlert tone="error">{serverError}</InlineAlert>}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={!canSubmit}>
-            <Plus size={16} /> {t("budgets.addBudget")}
+          <Button type="submit" loading={upsert.isPending}>
+            {!upsert.isPending && <Plus size={16} aria-hidden="true" />}
+            {t("budgets.addBudget")}
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }
