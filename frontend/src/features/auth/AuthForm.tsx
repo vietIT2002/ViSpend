@@ -19,7 +19,8 @@ import { Label } from "../../components/ui/label";
 import { LanguageToggle } from "../../components/ui/language-toggle";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../lib/auth";
-import { useErrorText, useT } from "../../lib/i18n";
+import { authErrorKey } from "../../lib/auth-errors";
+import { useT } from "../../lib/i18n";
 import type { TKey } from "../../lib/i18n/en";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
@@ -62,7 +63,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
     <div className="flex items-center gap-4">
       <span
         className={cn(
-          "grid shrink-0 place-items-center rounded-lg bg-brand text-white shadow-[0_10px_24px_rgb(60_179_113/0.18)]",
+          "grid shrink-0 place-items-center rounded-lg bg-brand-bright text-white shadow-[0_10px_24px_rgb(60_179_113/0.18)]",
           compact ? "size-10" : "size-12",
         )}
       >
@@ -255,7 +256,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
   const { login, loginWithGoogle, register } = useAuth();
   const t = useT();
-  const errText = useErrorText();
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -280,9 +280,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
       navigate("/");
     } catch (err) {
-      setError(errText(err));
+      setError(t(authErrorKey(err, "errors.unknown")));
     } finally {
       window.clearTimeout(slowTimer);
+      setLoginSlow(false);
     }
   }
 
@@ -294,12 +295,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         await loginWithGoogle(credential);
         navigate("/");
       } catch (err) {
-        setError(errText(err, "auth.googleError"));
+        setError(t(authErrorKey(err, "auth.googleError")));
       } finally {
         setGoogleBusy(false);
       }
     },
-    [errText, loginWithGoogle, navigate],
+    [t, loginWithGoogle, navigate],
   );
 
   const handleGoogleError = useCallback((message: string) => {

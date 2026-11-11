@@ -146,5 +146,5 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 export function CategoryIcon({ name, size = 16 }: { name: string | null; size?: number }) {
   const Cmp = (name && CATEGORY_ICONS[name]) || Tag;
-  return <Cmp size={size} />;
+  return <Cmp size={size} aria-hidden="true" />;
 }

@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import { setFormatLocale, type AppLocale } from "../format";
 import type { Category } from "../../types";
 import { en, type TKey } from "./en";
 import { vi } from "./vi";
@@ -37,7 +38,7 @@ interface I18nContextValue {
   setLang: (lang: Lang) => void;
   t: (key: TKey, vars?: Vars) => string;
   /** Intl locale for date/number formatting. */
-  locale: "en-US" | "vi-VN";
+  locale: AppLocale;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -79,6 +80,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     [user, refreshUser],
   );
 
+  // Synchronously, so children formatting during this render use the right locale.
+  setFormatLocale(lang === "vi" ? "vi-VN" : "en-GB");
+
   const t = useCallback(
     (key: TKey, vars?: Vars) => {
       const dict = DICTS[lang];
@@ -89,7 +93,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<I18nContextValue>(
-    () => ({ lang, setLang, t, locale: lang === "vi" ? "vi-VN" : "en-US" }),
+    () => ({ lang, setLang, t, locale: lang === "vi" ? "vi-VN" : "en-GB" }),
     [lang, setLang, t],
   );
 
