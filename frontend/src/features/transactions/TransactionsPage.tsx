@@ -790,25 +790,48 @@ function TransactionDetails({
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
 
+  const currentId = useRef<string | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const mounted = useRef(true);
+  currentId.current = txn?.id ?? null;
+
+  function dropReceipt() {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = null;
+    setReceiptUrl(null);
+  }
+
   // Drop the previous receipt when another transaction opens or the dialog closes.
   useEffect(() => {
     setReceiptError(null);
-    setReceiptUrl((url) => {
-      if (url) URL.revokeObjectURL(url);
-      return null;
-    });
+    setReceiptLoading(false);
+    dropReceipt();
   }, [txn?.id]);
+
+  // Revoke on unmount; a fetch still in flight is dropped when it resolves.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    };
+  }, []);
 
   async function loadReceipt(id: string) {
     setReceiptLoading(true);
     setReceiptError(null);
     try {
       const blob = await api.getBlob(`/transactions/${id}/receipt`);
-      setReceiptUrl(URL.createObjectURL(blob));
+      if (!mounted.current || currentId.current !== id) return; // another transaction (or none) is showing now
+      dropReceipt();
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      setReceiptUrl(url);
     } catch (err) {
-      setReceiptError(errText(err, "errors.receipt_unavailable"));
+      if (mounted.current && currentId.current === id) setReceiptError(errText(err, "errors.receipt_unavailable"));
     } finally {
-      setReceiptLoading(false);
+      if (mounted.current && currentId.current === id) setReceiptLoading(false);
     }
   }
 
